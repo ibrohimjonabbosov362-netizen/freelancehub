@@ -444,10 +444,10 @@ export default function ProjectDetailPage() {
                 {project.contract && (
                   isPremium ? (
                     <Link
-                      href={`/projects/${id}/print`}
+                      href={`/projects/${id}/print?download=1`}
                       className="btn btn-ghost btn-sm"
                     >
-                      PDF eksport
+                      PDF yuklab olish
                     </Link>
                   ) : (
                     <Link

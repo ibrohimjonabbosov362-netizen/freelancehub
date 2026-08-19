@@ -1,17 +1,36 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 
+export function isGoogleConfigured(): boolean {
+  return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+}
+
 export const authOptions: NextAuthOptions = {
+  adapter: PrismaAdapter(prisma) as NextAuthOptions["adapter"],
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60,
   },
+  useSecureCookies: process.env.NODE_ENV === "production",
   pages: {
     signIn: "/login",
   },
   providers: [
+    // Kalitlar berilmagan bo'lsa Google tugmasi umuman chiqmaydi
+    ...(isGoogleConfigured()
+      ? [
+          GoogleProvider({
+            clientId: process.env.GOOGLE_CLIENT_ID!,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+            allowDangerousEmailAccountLinking: true,
+          }),
+        ]
+      : []),
     CredentialsProvider({
       name: "Credentials",
       credentials: {
@@ -32,7 +51,8 @@ export const authOptions: NextAuthOptions = {
 
         const user = await prisma.user.findUnique({ where: { email } });
 
-        if (!user) {
+        // Parolsiz hisob = Google orqali ochilgan, credentials bilan kirilmaydi
+        if (!user?.password) {
           return null;
         }
 
@@ -55,7 +75,29 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
       }
+
+      // Google orqali kirilganda id token'da bo'lmasligi mumkin
+      if (!token.id && token.email) {
+        const existing = await prisma.user.findUnique({
+          where: { email: token.email },
+          select: { id: true },
+        });
+        if (existing) token.id = existing.id;
+      }
+
       return token;
+    },
+
+    async signIn({ user }) {
+      // Google orqali birinchi marta kirgan foydalanuvchiga bepul obuna ochamiz
+      if (user?.id) {
+        await prisma.subscription.upsert({
+          where: { userId: user.id },
+          create: { userId: user.id, plan: "FREE" },
+          update: {},
+        });
+      }
+      return true;
     },
     async session({ session, token }) {
       if (session.user) {

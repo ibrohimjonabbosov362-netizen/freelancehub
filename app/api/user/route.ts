@@ -68,6 +68,13 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Foydalanuvchi topilmadi" }, { status: 404 });
     }
 
+    if (!user.password) {
+      return NextResponse.json(
+        { error: "Hisobingiz Google orqali ochilgan — parol o'rnatilmagan" },
+        { status: 400 }
+      );
+    }
+
     // Sessiya o'g'irlangan bo'lsa ham parolni almashtirib bo'lmasin
     const valid = await bcrypt.compare(String(currentPassword ?? ""), user.password);
 

@@ -60,6 +60,12 @@ export default function ClientDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [actionError, setActionError] = useState("");
 
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editCompany, setEditCompany] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+
   // Shu mijoz uchun taklif yaratish
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
@@ -123,8 +129,56 @@ export default function ClientDetailPage() {
     }
   }
 
+  const proposals = client?.proposals ?? [];
+  const projects = client?.projects ?? [];
+
+  function startEdit() {
+    if (!client) return;
+    setEditName(client.name);
+    setEditEmail(client.email);
+    setEditCompany(client.company ?? "");
+    setActionError("");
+    setEditing(true);
+  }
+
+  async function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingEdit(true);
+    setActionError("");
+
+    try {
+      const res = await fetch(`/api/clients/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editName,
+          email: editEmail,
+          company: editCompany,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setActionError(data.error || "Saqlab bo'lmadi");
+        return;
+      }
+
+      setEditing(false);
+      await reload();
+    } catch {
+      setActionError("Server bilan bog'lanishda xatolik");
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
   async function handleDelete() {
-    if (!confirm("Mijozni o'chirishga ishonchingiz komilmi?")) return;
+    const warning =
+      proposals.length > 0 || projects.length > 0
+        ? `Diqqat: bu mijoz bilan birga ${proposals.length} ta taklif va ${projects.length} ta loyiha (shartnoma va to'lovlari bilan) o'chadi. Davom etamizmi?`
+        : "Mijozni o'chirishga ishonchingiz komilmi?";
+
+    if (!confirm(warning)) return;
 
     setDeleting(true);
     setActionError("");
@@ -173,9 +227,6 @@ export default function ClientDetailPage() {
     );
   }
 
-  const proposals = client.proposals ?? [];
-  const projects = client.projects ?? [];
-
   return (
     <AppShell>
       <div className="px-5 py-8 sm:px-8 sm:py-10">
@@ -211,14 +262,77 @@ export default function ClientDetailPage() {
                 </div>
               </div>
 
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="btn btn-danger btn-sm"
-              >
-                {deleting ? "O'chirilmoqda..." : "O'chirish"}
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={startEdit} className="btn btn-ghost btn-sm">
+                  Tahrirlash
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="btn btn-danger btn-sm"
+                >
+                  {deleting ? "O'chirilmoqda..." : "O'chirish"}
+                </button>
+              </div>
             </div>
+
+            {editing && (
+              <form
+                onSubmit={handleSaveEdit}
+                className="mt-5 space-y-4 rounded-xl bg-[var(--surface-2)] p-4"
+              >
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="e-name" className="label">Ism</label>
+                    <input
+                      id="e-name"
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      required
+                      className="input"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="e-email" className="label">Email</label>
+                    <input
+                      id="e-email"
+                      type="email"
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      required
+                      className="input"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="e-company" className="label">
+                    Kompaniya <span className="text-[var(--faint)]">(ixtiyoriy)</span>
+                  </label>
+                  <input
+                    id="e-company"
+                    type="text"
+                    value={editCompany}
+                    onChange={(e) => setEditCompany(e.target.value)}
+                    className="input"
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <button type="submit" disabled={savingEdit} className="btn btn-accent btn-sm">
+                    {savingEdit ? "Saqlanmoqda..." : "Saqlash"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditing(false)}
+                    className="btn btn-ghost btn-sm"
+                  >
+                    Bekor qilish
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
 
           {/* Takliflar */}

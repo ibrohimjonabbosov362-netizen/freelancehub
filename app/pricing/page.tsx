@@ -114,7 +114,11 @@ export default function PricingPage() {
       </main>
 
       <footer className="border-t border-[var(--border)] px-6 py-6 text-center text-sm text-[var(--faint)] sm:px-8">
-        © 2026 FreelanceHub
+        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-x-5 gap-y-2">
+          <span>© 2026 FreelanceHub</span>
+          <Link href="/privacy" className="link-muted">Maxfiylik siyosati</Link>
+          <Link href="/terms" className="link-muted">Foydalanish shartlari</Link>
+        </div>
       </footer>
     </div>
   );

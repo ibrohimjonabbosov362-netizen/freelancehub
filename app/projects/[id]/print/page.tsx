@@ -3,6 +3,7 @@ import { getCurrentUserId } from "@/lib/session";
 import { getPlanInfo } from "@/lib/subscription";
 import { formatAmount, formatDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { Suspense } from "react";
 import PrintButton from "./PrintButton";
 
 export const metadata = { title: "Shartnoma" };
@@ -52,7 +53,9 @@ export default async function ContractPrintPage({
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-8 sm:px-8">
-      <PrintButton backHref={`/projects/${id}`} />
+      <Suspense fallback={null}>
+        <PrintButton backHref={`/projects/${id}`} />
+      </Suspense>
 
       <article className="print-sheet">
         <header className="doc-header">
