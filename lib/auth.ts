@@ -2,6 +2,7 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -22,9 +23,14 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email.trim().toLowerCase() },
-        });
+        const email = credentials.email.trim().toLowerCase();
+
+        // Bir email uchun 15 daqiqada 10 ta urinish
+        if (!rateLimit(`login:${email}`, 10, 15 * 60 * 1000).ok) {
+          return null;
+        }
+
+        const user = await prisma.user.findUnique({ where: { email } });
 
         if (!user) {
           return null;

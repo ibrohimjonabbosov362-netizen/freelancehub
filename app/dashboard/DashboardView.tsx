@@ -25,12 +25,15 @@ export type DashboardData = {
     label: string;
     count: number;
     trend: number[];
+    change: number | null;
     color: string;
+    href: string;
   }[];
   revenue: { label: string; value: number }[];
   clients: {
     id: string;
     name: string;
+    email: string;
     company: string | null;
     projectTitle: string | null;
     status: ProjectStatus | null;
@@ -108,7 +111,7 @@ export default function DashboardView({ data }: { data: DashboardData }) {
 
             <div className="grid gap-4 sm:grid-cols-3">
               {data.proposalTiles.map((tile) => (
-                <div key={tile.key} className="card card-hover p-4">
+                <div key={tile.key} className="card card-hover flex flex-col p-4">
                   <div className="mb-2 flex items-center gap-2">
                     <span
                       className="h-2 w-2 rounded-full"
@@ -119,15 +122,38 @@ export default function DashboardView({ data }: { data: DashboardData }) {
                       {tile.label}
                     </span>
                   </div>
-                  <p className="mb-3 text-2xl font-semibold tracking-tight">
-                    {tile.count}
-                  </p>
+
+                  <div className="mb-3 flex items-baseline gap-2">
+                    <p className="text-2xl font-semibold tracking-tight">
+                      {tile.count}
+                    </p>
+                    {tile.change !== null && (
+                      <span
+                        className={`text-xs font-medium ${
+                          tile.change >= 0
+                            ? "text-[var(--success)]"
+                            : "text-[var(--danger)]"
+                        }`}
+                        title="So'nggi 3 hafta, oldingi 3 haftaga nisbatan"
+                      >
+                        {tile.change >= 0 ? "▲" : "▼"} {Math.abs(tile.change)}%
+                      </span>
+                    )}
+                  </div>
+
                   <Sparkbars
                     values={tile.trend}
                     labels={trendLabels}
                     color={tile.color}
                     ariaLabel={`${tile.label}: so'nggi olti haftadagi dinamika`}
                   />
+
+                  <Link
+                    href={tile.href}
+                    className="btn btn-ghost btn-sm mt-3 w-full"
+                  >
+                    Batafsil
+                  </Link>
                 </div>
               ))}
             </div>
@@ -161,39 +187,73 @@ export default function DashboardView({ data }: { data: DashboardData }) {
             {data.clients.length === 0 ? (
               <p className="hint">Hali mijoz qo&apos;shilmagan.</p>
             ) : (
-              <ul className="space-y-3">
-                {data.clients.map((client) => (
-                  <li
-                    key={client.id}
-                    className="flex items-center justify-between gap-3 border-t border-[var(--border)] pt-3 first:border-0 first:pt-0"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--surface-3)] text-xs font-semibold">
-                        {client.name.charAt(0).toUpperCase()}
-                      </span>
-                      <div className="min-w-0">
-                        <Link
-                          href={`/clients/${client.id}`}
-                          className="link block truncate text-sm"
-                        >
-                          {client.name}
-                        </Link>
-                        <span className="block truncate text-xs text-[var(--faint)]">
+              <div className="table-wrap -mx-2">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Mijoz</th>
+                      <th>Loyiha</th>
+                      <th>Holat</th>
+                      <th className="text-right">Amal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.clients.map((client) => (
+                      <tr key={client.id}>
+                        <td>
+                          <div className="flex min-w-0 items-center gap-2.5">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--surface-3)] text-xs font-semibold">
+                              {client.name.charAt(0).toUpperCase()}
+                            </span>
+                            <Link
+                              href={`/clients/${client.id}`}
+                              className="link truncate"
+                            >
+                              {client.name}
+                            </Link>
+                          </div>
+                        </td>
+                        <td className="max-w-[10rem] truncate text-[var(--muted)]">
                           {client.projectTitle ?? client.company ?? "—"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {client.status && (
-                      <span
-                        className={`badge shrink-0 ${projectStatusBadges[client.status]}`}
-                      >
-                        {projectStatusLabels[client.status]}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
+                        </td>
+                        <td>
+                          {client.status ? (
+                            <span className={`badge ${projectStatusBadges[client.status]}`}>
+                              {projectStatusLabels[client.status]}
+                            </span>
+                          ) : (
+                            <span className="text-[var(--faint)]">—</span>
+                          )}
+                        </td>
+                        <td>
+                          <div className="flex items-center justify-end gap-1">
+                            <Link
+                              href={`/clients/${client.id}`}
+                              aria-label={`${client.name} sahifasi`}
+                              title="Ochish"
+                              className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--muted)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--ink)]"
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                                <path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                              </svg>
+                            </Link>
+                            <a
+                              href={`mailto:${client.email}`}
+                              aria-label={`${client.name} ga xat yozish`}
+                              title="Email yuborish"
+                              className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--muted)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--ink)]"
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                                <path d="M4 6h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Zm0 1 8 6 8-6" />
+                              </svg>
+                            </a>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </section>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 
 function initials(name?: string | null) {
@@ -24,6 +25,7 @@ export default function Topbar({
 }) {
   const { data: session } = useSession();
   const [time, setTime] = useState("");
+  const [alerts, setAlerts] = useState({ overdue: 0, dueSoon: 0, total: 0 });
 
   // Soat serverda renderlanmaydi — aks holda hidratsiya mos kelmaydi
   useEffect(() => {
@@ -36,6 +38,25 @@ export default function Topbar({
     tick();
     const timer = setInterval(tick, 30_000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/notifications");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setAlerts(data);
+      } catch {
+        // bildirishnoma yuklanmasa sahifa baribir ishlayveradi
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -65,6 +86,45 @@ export default function Topbar({
       </div>
 
       <div className="flex items-center gap-3">
+        <Link
+          href="/payments"
+          aria-label={
+            alerts.total > 0
+              ? `${alerts.total} ta to'lov e'tibor talab qiladi`
+              : "To'lovlar"
+          }
+          title={
+            alerts.overdue > 0
+              ? `${alerts.overdue} ta to'lov muddati o'tgan`
+              : alerts.dueSoon > 0
+                ? `${alerts.dueSoon} ta to'lov muddati yaqin`
+                : "Yangi bildirishnoma yo'q"
+          }
+          className="relative flex h-9 w-9 items-center justify-center rounded-xl text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--ink)]"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-[18px] w-[18px]"
+            aria-hidden="true"
+          >
+            <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" />
+          </svg>
+
+          {alerts.total > 0 && (
+            <span
+              className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full"
+              style={{
+                background: alerts.overdue > 0 ? "var(--danger)" : "var(--warning)",
+              }}
+            />
+          )}
+        </Link>
+
         <div className="flex items-center gap-2.5">
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[var(--accent-1)] to-[var(--accent-2)] text-xs font-semibold text-white">
             {initials(session?.user?.name)}

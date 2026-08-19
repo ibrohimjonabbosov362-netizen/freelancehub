@@ -11,6 +11,14 @@ export const metadata = { title: "Boshqaruv paneli" };
 
 const MONTHS = ["Yan", "Fev", "Mar", "Apr", "May", "Iyn", "Iyl", "Avg", "Sen", "Okt", "Noy", "Dek"];
 
+function trendPercent(weeks: number[]): number | null {
+  const recent = weeks.slice(3).reduce((a, b) => a + b, 0);
+  const earlier = weeks.slice(0, 3).reduce((a, b) => a + b, 0);
+
+  if (earlier === 0) return recent > 0 ? 100 : null;
+  return Math.round(((recent - earlier) / earlier) * 100);
+}
+
 function weeklyTrend(dates: Date[]): number[] {
   const week = 7 * 24 * 60 * 60 * 1000;
   const now = Date.now();
@@ -83,16 +91,13 @@ export default async function DashboardPage() {
     proposals.filter((p) => p.status === status);
 
   const proposalTiles = [
-    { key: "SENT", label: "Yuborilgan", color: "var(--viz-1)" },
-    { key: "ACCEPTED", label: "Qabul qilingan", color: "var(--viz-2)" },
-    { key: "DRAFT", label: "Qoralama", color: "var(--viz-3)" },
+    { key: "SENT", label: "Yuborilgan", color: "var(--viz-1)", href: "/proposals" },
+    { key: "ACCEPTED", label: "Qabul qilingan", color: "var(--viz-2)", href: "/projects" },
+    { key: "DRAFT", label: "Qoralama", color: "var(--viz-3)", href: "/proposals" },
   ].map((tile) => {
     const rows = byStatus(tile.key);
-    return {
-      ...tile,
-      count: rows.length,
-      trend: weeklyTrend(rows.map((r) => r.createdAt)),
-    };
+    const trend = weeklyTrend(rows.map((r) => r.createdAt));
+    return { ...tile, count: rows.length, trend, change: trendPercent(trend) };
   });
 
   // Oxirgi 6 oyni nol bilan to'ldirib, to'lovlarni ustiga yozamiz
@@ -121,6 +126,7 @@ export default async function DashboardPage() {
       id: c.id,
       name: c.name,
       company: c.company,
+      email: c.email,
       projectTitle: c.projects[0]?.title ?? null,
       status: (c.projects[0]?.status as ProjectStatus) ?? null,
     })),

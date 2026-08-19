@@ -13,5 +13,7 @@ export const config = {
     "/proposals/:path*",
     "/projects/:path*",
     "/billing/:path*",
+    "/payments/:path*",
+    "/settings/:path*",
   ],
 };

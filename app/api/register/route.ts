@@ -1,8 +1,19 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { clientIp, rateLimit } from "@/lib/rateLimit";
 
 export async function POST(request: Request) {
+  // Bitta IP soatiga 5 tadan ortiq hisob ocholmasin
+  const limit = rateLimit(`register:${clientIp(request)}`, 5, 60 * 60 * 1000);
+
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Juda ko'p urinish. Birozdan so'ng qayta urinib ko'ring." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
+  }
+
   try {
     const { name, email, password } = await request.json();
 
