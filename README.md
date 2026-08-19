@@ -96,6 +96,54 @@ proxy.ts          Kirmagan foydalanuvchini /login ga yo'naltiradi
 4. Loyiha ichida **shartnoma** yoziladi va imzolanadi (imzolangach matn qulflanadi).
 5. Loyihaga **to'lovlar** qo'shiladi; muddati o'tganlari avtomatik *Muddati o'tgan* bo'ladi va boshqaruv panelida ko'rinadi.
 
+---
+
+## Vercel'ga joylashtirish
+
+Loyiha deploy'ga tayyor: `postinstall` da `prisma generate` bor, baza pooler
+(pgbouncer) orqali ulanadi, migratsiyalar `prisma/migrations` da.
+
+**1. Kodni GitHub'ga yuklang**
+```bash
+git remote add origin https://github.com/<foydalanuvchi>/freelancehub.git
+git push -u origin main
+```
+
+**2. Vercel'da loyihani import qiling**
+[vercel.com/new](https://vercel.com/new) → repozitoriyni tanlang.
+Framework avtomatik "Next.js" deb aniqlanadi, sozlamalarni o'zgartirish shart emas.
+
+**3. Muhit o'zgaruvchilarini qo'shing** (Settings → Environment Variables)
+
+| O'zgaruvchi | Qiymat |
+|---|---|
+| `DATABASE_URL` | `.env` dagi bilan bir xil (6543-port, `?pgbouncer=true`) |
+| `DIRECT_URL` | `.env` dagi bilan bir xil (5432-port) |
+| `NEXTAUTH_SECRET` | `.env` dagi bilan bir xil |
+| `NEXTAUTH_URL` | **`https://sizning-loyiha.vercel.app`** — lokal manzil emas! |
+| `NEXT_PUBLIC_APP_URL` | yuqoridagi bilan bir xil |
+| `STRIPE_*` | Premium kerak bo'lsa (bo'sh qoldirsa ham ilova ishlaydi) |
+
+> `NEXTAUTH_URL` ni almashtirishni unutmang — aks holda kirish (login)
+> `localhost` ga yo'naltirib, ishlamay qoladi.
+
+**4. Deploy** tugmasini bosing. Birinchi build ~2 daqiqa.
+
+**5. Migratsiyalarni bazaga qo'llang** (bir marta, lokal kompyuterdan):
+```bash
+npx prisma migrate deploy
+```
+
+**6. Stripe webhook manzilini yangilang**
+Stripe Dashboard → Webhooks → endpoint: `https://sizning-loyiha.vercel.app/api/stripe/webhook`.
+Yangi `whsec_...` ni Vercel'dagi `STRIPE_WEBHOOK_SECRET` ga yozing va qayta deploy qiling.
+
+### Deploydan keyin tekshiring
+- `/register` → yangi hisob yaratiladimi
+- `/login` → kirish ishlaydimi (bu `NEXTAUTH_URL` to'g'riligini ko'rsatadi)
+- `/dashboard` → panel ochiladimi
+- Chiqib, `/clients` ga kiring → `/login` ga yo'naltirishi kerak
+
 ## Buyruqlar
 
 ```bash
