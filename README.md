@@ -30,6 +30,10 @@ Ilova: http://localhost:3000
 | `STRIPE_PRICE_ID` | yo'q | Premium obuna narxi (`price_...`) |
 | `STRIPE_WEBHOOK_SECRET` | yo'q | Webhook siri (`whsec_...`) |
 | `NEXT_PUBLIC_APP_URL` | yo'q | Checkout'dan qaytish manzili |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | yo'q | Bo'lmasa "Google orqali kirish" tugmasi ko'rinmaydi |
+| `RESEND_API_KEY` | yo'q | Parolni tiklash xatlari uchun ([resend.com](https://resend.com)) |
+| `MAIL_FROM` | yo'q | Jo'natuvchi, masalan `FreelanceHub <no-reply@domen.uz>` |
+| `NEXT_PUBLIC_GA_ID` | yo'q | Google Analytics (`G-...`); bo'lmasa skript yuklanmaydi |
 
 > ⚠️ `.env` da bir o'zgaruvchini ikki marta yozmang — **oxirgisi kuchga kiradi** va yuqoridagisini jimgina bekor qiladi.
 
@@ -71,29 +75,48 @@ app/
   api/
     auth/[...nextauth]/   NextAuth
     register/             Ro'yxatdan o'tish
-    clients/              Mijozlar CRUD
+    clients/              Mijozlar CRUD (telefon, holat, izoh, daromad)
     proposals/            Takliflar (ACCEPTED bo'lsa loyiha avtomatik yaratiladi)
     projects/[id]/        Loyiha, uning to'lovlari va shartnomasi
+    contracts/            Barcha shartnomalar ro'yxati
     payments/[id]/        To'lov holati
     subscription/         Joriy tarif
     stripe/               checkout · portal · webhook
-  dashboard/  clients/  proposals/  projects/  billing/  pricing/
+  components/
+    ui.tsx                Avatar · StatCard · Modal · Toast · EmptyState · Skeleton
+    AuthLayout.tsx        Kirish/ro'yxat sahifalari uchun ikki ustunli tuzilma
+    GoogleButton.tsx      Google orqali kirish (sozlanmagan bo'lsa ko'rinmaydi)
+    SiteHeader · SiteFooter · DashboardPreview · Faq
+  dashboard/  clients/  proposals/  projects/  contracts/
+  payments/  billing/  settings/  pricing/
 lib/
   prisma.ts       Prisma klienti (dev'da qayta ishlatiladi)
   auth.ts         NextAuth sozlamalari
   session.ts      getCurrentUserId()
   subscription.ts Tarif tekshiruvi + bepul limit
   payments.ts     Muddati o'tgan to'lovlarni belgilash
+  statuses.ts     Holatlar ro'yxati va nishon uslublari
   format.ts       Pul va sana formati
+  i18n/           uz/en lug'at, server va klient tomoni
 proxy.ts          Kirmagan foydalanuvchini /login ga yo'naltiradi
 ```
+
+### Til (uz / en)
+
+Interfeys o'zbek va ingliz tillarida. Til `fh_locale` cookie'sida saqlanadi —
+yon panel va kirish sahifasidagi almashtirgich orqali o'zgaradi, standarti o'zbekcha.
+Yangi matn qo'shganda uni `lib/i18n/dictionaries.ts` dagi **ikkala** lug'atga yozing:
+`uz` obyektining tuzilishi tip sifatida ishlatiladi, shuning uchun `en` da kalit
+tushib qolsa TypeScript xato beradi.
 
 ## Ish oqimi
 
 1. **Mijoz** qo'shiladi (bepul tarifda 3 tagacha).
 2. Mijozga **taklif** yoziladi.
 3. Taklif *Qabul qilingan* bo'lsa — **loyiha** avtomatik yaratiladi.
-4. Loyiha ichida **shartnoma** yoziladi va imzolanadi (imzolangach matn qulflanadi).
+4. Loyiha ichida **shartnoma** yoziladi: *Qoralama* → *Tasdiq kutilmoqda* →
+   *Tasdiqlangan* (imzolangach matn qulflanadi). Barcha shartnomalar
+   `/contracts` sahifasida ko'rinadi.
 5. Loyihaga **to'lovlar** qo'shiladi; muddati o'tganlari avtomatik *Muddati o'tgan* bo'ladi va boshqaruv panelida ko'rinadi.
 
 ---
