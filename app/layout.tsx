@@ -23,43 +23,49 @@ const fraunces = Fraunces({
 const appUrl =
   process.env.NEXT_PUBLIC_APP_URL ?? "https://freelancehub-psi.vercel.app";
 
+const SEO_TITLE = "FreelanceHub — Manage Your Freelance Business in One Place";
+const SEO_DESCRIPTION =
+  "Manage clients, proposals, projects, contracts and payments with FreelanceHub.";
+
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: {
-    default: "FreelanceHub",
+    default: SEO_TITLE,
     template: "%s | FreelanceHub",
   },
-  description:
-    "FreelanceHub — freelancers and clients connecting in one platform.",
+  description: SEO_DESCRIPTION,
+  applicationName: "FreelanceHub",
   keywords: [
     "freelance",
     "freelancer",
-    "freelance jobs",
+    "freelance CRM",
+    "client management",
+    "proposals",
+    "contracts",
+    "invoices",
+    "payment tracking",
     "FreelanceHub",
-    "remote work",
-    "online jobs",
   ],
   authors: [{ name: "FreelanceHub" }],
   creator: "FreelanceHub",
   publisher: "FreelanceHub",
+  alternates: { canonical: "/" },
   robots: {
     index: true,
     follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
   },
   openGraph: {
     type: "website",
-    locale: "uz_UZ",
     url: appUrl,
     siteName: "FreelanceHub",
-    title: "FreelanceHub — mijozlaringizni bitta joyda boshqaring",
-    description:
-      "Mijozlar, takliflar, loyihalar, shartnomalar va to'lovlar — bitta panelda.",
+    title: SEO_TITLE,
+    description: SEO_DESCRIPTION,
   },
   twitter: {
     card: "summary_large_image",
-    title: "FreelanceHub",
-    description:
-      "Frilanserlar uchun mijoz, taklif, loyiha va to'lovlarni boshqarish platformasi.",
+    title: SEO_TITLE,
+    description: SEO_DESCRIPTION,
   },
 };
 

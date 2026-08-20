@@ -9,9 +9,12 @@ import { formatAmount, formatDate } from "@/lib/format";
 import { contractTemplates, getTemplate } from "@/lib/contractTemplates";
 import {
   PROJECT_STATUSES,
+  contractStatusBadges,
+  contractStatusLabels,
   paymentStatusBadges,
   paymentStatusLabels,
   projectStatusLabels,
+  type ContractStatus,
   type PaymentStatus,
   type ProjectStatus,
 } from "@/lib/statuses";
@@ -26,6 +29,8 @@ type Payment = {
 
 type Contract = {
   id: string;
+  title: string | null;
+  status: ContractStatus;
   content: string;
   signedAt: string | null;
 } | null;
@@ -69,6 +74,7 @@ export default function ProjectDetailPage() {
   const [paymentDueDate, setPaymentDueDate] = useState("");
 
   const [contractText, setContractText] = useState("");
+  const [contractTitle, setContractTitle] = useState("");
   const [contractDirty, setContractDirty] = useState(false);
 
   useEffect(() => {
@@ -85,6 +91,7 @@ export default function ProjectDetailPage() {
       if (result) {
         setProject(result);
         setContractText(result.contract?.content ?? "");
+        setContractTitle(result.contract?.title ?? "");
       } else {
         setNotFound(true);
       }
@@ -102,7 +109,10 @@ export default function ProjectDetailPage() {
     const result = await fetchProject(id);
     if (result) {
       setProject(result);
-      if (!contractDirty) setContractText(result.contract?.content ?? "");
+      if (!contractDirty) {
+        setContractText(result.contract?.content ?? "");
+        setContractTitle(result.contract?.title ?? "");
+      }
     }
   }
 
@@ -161,8 +171,14 @@ export default function ProjectDetailPage() {
     if (await send(`/api/payments/${paymentId}`, "DELETE")) await reload();
   }
 
-  async function handleSaveContract() {
-    if (await send(`/api/projects/${id}/contract`, "PUT", { content: contractText })) {
+  async function handleSaveContract(status?: ContractStatus) {
+    const ok = await send(`/api/projects/${id}/contract`, "PUT", {
+      content: contractText,
+      title: contractTitle,
+      ...(status ? { status } : {}),
+    });
+
+    if (ok) {
       setContractDirty(false);
       await reload();
     }
@@ -435,9 +451,12 @@ export default function ProjectDetailPage() {
               <h2 className="section-title">Shartnoma</h2>
 
               <div className="flex flex-wrap items-center gap-2">
-                {signed && (
-                  <span className="badge badge-success">
-                    Imzolangan · {formatDate(project.contract?.signedAt)}
+                {project.contract && (
+                  <span
+                    className={`badge ${contractStatusBadges[project.contract.status]}`}
+                  >
+                    {contractStatusLabels[project.contract.status]}
+                    {signed && ` · ${formatDate(project.contract.signedAt)}`}
                   </span>
                 )}
 
@@ -505,6 +524,26 @@ export default function ProjectDetailPage() {
               </div>
             )}
 
+            {!signed && (
+              <div className="mb-3">
+                <label htmlFor="contract-title" className="label">
+                  Shartnoma nomi{" "}
+                  <span className="text-[var(--faint)]">(ixtiyoriy)</span>
+                </label>
+                <input
+                  id="contract-title"
+                  type="text"
+                  value={contractTitle}
+                  onChange={(e) => {
+                    setContractTitle(e.target.value);
+                    setContractDirty(true);
+                  }}
+                  className="input"
+                  placeholder="Xizmat ko'rsatish shartnomasi"
+                />
+              </div>
+            )}
+
             {signed ? (
               <pre className="whitespace-pre-wrap rounded-xl bg-[var(--surface-2)] p-4 font-sans text-sm text-[var(--muted)]">
                 {project.contract?.content}
@@ -525,11 +564,32 @@ export default function ProjectDetailPage() {
             <div className="mt-4 flex flex-wrap items-center gap-3">
               {!signed && (
                 <button
-                  onClick={handleSaveContract}
+                  onClick={() => handleSaveContract()}
                   disabled={busy || !contractText.trim()}
                   className="btn btn-accent btn-sm"
                 >
                   Saqlash
+                </button>
+              )}
+
+              {/* Qoralamani mijoz tasdig'iga yuborish */}
+              {!signed && project.contract?.status === "DRAFT" && (
+                <button
+                  onClick={() => handleSaveContract("PENDING_APPROVAL")}
+                  disabled={busy || !contractText.trim()}
+                  className="btn btn-ghost btn-sm"
+                >
+                  Tasdiqqa yuborish
+                </button>
+              )}
+
+              {!signed && project.contract?.status === "PENDING_APPROVAL" && (
+                <button
+                  onClick={() => handleSaveContract("DRAFT")}
+                  disabled={busy}
+                  className="btn btn-ghost btn-sm"
+                >
+                  Qoralamaga qaytarish
                 </button>
               )}
 

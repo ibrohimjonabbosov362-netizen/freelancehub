@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import type { ContractStatus } from "@/lib/statuses";
 
 const MAX_CONTENT_LENGTH = 50_000;
 
@@ -39,7 +40,7 @@ export async function PUT(
   }
 
   const { id } = await params;
-  const { content } = await request.json();
+  const { content, title, status } = await request.json();
 
   if (typeof content !== "string" || !content.trim()) {
     return NextResponse.json(
@@ -71,10 +72,28 @@ export async function PUT(
     );
   }
 
+  // Imzolanmagan shartnoma faqat qoralama yoki tasdiq kutish holatida bo'la oladi
+  const nextStatus =
+    status === "PENDING_APPROVAL" || status === "DRAFT"
+      ? (status as ContractStatus)
+      : undefined;
+
+  const trimmedTitle =
+    typeof title === "string" && title.trim() ? title.trim().slice(0, 200) : null;
+
   const contract = await prisma.contract.upsert({
     where: { projectId: id },
-    create: { projectId: id, content: content.trim() },
-    update: { content: content.trim() },
+    create: {
+      projectId: id,
+      content: content.trim(),
+      title: trimmedTitle,
+      ...(nextStatus ? { status: nextStatus } : {}),
+    },
+    update: {
+      content: content.trim(),
+      title: trimmedTitle,
+      ...(nextStatus ? { status: nextStatus } : {}),
+    },
   });
 
   return NextResponse.json(contract);
@@ -116,9 +135,13 @@ export async function PATCH(
     );
   }
 
+  // Imzo holati bilan shartnoma holati birga yuradi
   const contract = await prisma.contract.update({
     where: { projectId: id },
-    data: { signedAt: signed ? new Date() : null },
+    data: {
+      signedAt: signed ? new Date() : null,
+      status: signed ? "APPROVED" : "DRAFT",
+    },
   });
 
   return NextResponse.json(contract);

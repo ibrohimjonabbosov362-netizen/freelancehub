@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import Topbar from "../Topbar";
 import Icon from "../Icon";
@@ -69,6 +69,14 @@ export type DashboardData = {
   }[];
 };
 
+/** Salomlashuv soatga bog'liq, lekin obuna kerak emas — bir marta o'qiladi */
+const subscribeNever = () => () => {};
+
+function hourBucket(): "morning" | "day" | "evening" {
+  const hour = new Date().getHours();
+  return hour < 12 ? "morning" : hour < 18 ? "day" : "evening";
+}
+
 const ACTIVITY_ICONS: Record<DashboardData["activity"][number]["kind"], string> = {
   client: "users",
   proposal: "file",
@@ -79,19 +87,17 @@ const ACTIVITY_ICONS: Record<DashboardData["activity"][number]["kind"], string> 
 export default function DashboardView({ data }: { data: DashboardData }) {
   const { t } = useI18n();
 
-  // Salomlashuv serverda emas, brauzerda hisoblanadi — hidratsiya mos kelsin
-  const [greeting, setGreeting] = useState("");
+  // Serverda neytral matn, brauzerda vaqtga qarab — hidratsiya buzilmasin
+  const bucket = useSyncExternalStore(subscribeNever, hourBucket, () => null);
 
-  useEffect(() => {
-    const hour = new Date().getHours();
-    setGreeting(
-      hour < 12
-        ? t.dashboard.greetingMorning
-        : hour < 18
-          ? t.dashboard.greetingDay
-          : t.dashboard.greetingEvening
-    );
-  }, [t]);
+  const greeting =
+    bucket === "morning"
+      ? t.dashboard.greetingMorning
+      : bucket === "day"
+        ? t.dashboard.greetingDay
+        : bucket === "evening"
+          ? t.dashboard.greetingEvening
+          : t.dashboard.welcome;
 
   const trendLabels = Array.from(
     { length: 6 },

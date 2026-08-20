@@ -1,21 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import AppShell from "../AppShell";
 import Icon from "../Icon";
 import Topbar from "../Topbar";
-import { formatAmount } from "@/lib/format";
+import {
+  EmptyState,
+  Modal,
+  PageHeader,
+  StatCard,
+  TableSkeleton,
+  useToast,
+} from "../components/ui";
+import { useI18n } from "@/lib/i18n/client";
+import { fill } from "@/lib/i18n/dictionaries";
+import { formatAmount, formatAmountShort } from "@/lib/format";
 import {
   PROPOSAL_STATUSES,
-  proposalStatusBadges as statusBadges,
-  proposalStatusLabels as statusLabels,
+  proposalStatusBadges,
   type ProposalStatus,
 } from "@/lib/statuses";
 
-type Client = {
-  id: string;
-  name: string;
-};
+type Client = { id: string; name: string };
 
 type Proposal = {
   id: string;
@@ -41,34 +48,31 @@ async function fetchData(): Promise<{
     return {
       proposals: Array.isArray(proposalsData) ? proposalsData : [],
       clients: Array.isArray(clientsData) ? clientsData : [],
-      error: proposalsRes.ok
-        ? ""
-        : proposalsData?.error || "Takliflarni yuklab bo'lmadi",
+      error: proposalsRes.ok ? "" : proposalsData?.error || "load",
     };
   } catch {
-    return {
-      proposals: [],
-      clients: [],
-      error: "Server bilan bog'lanishda xatolik",
-    };
+    return { proposals: [], clients: [], error: "network" };
   }
 }
 
+const EMPTY_FORM = { clientId: "", title: "", description: "", amount: "" };
+
 export default function ProposalsPage() {
+  const { t } = useI18n();
+  const toast = useToast();
+
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [clientId, setClientId] = useState("");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState("");
   const [statusError, setStatusError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<"ALL" | ProposalStatus>("ALL");
 
   useEffect(() => {
     let cancelled = false;
@@ -107,28 +111,25 @@ export default function ProposalsPage() {
       res = await fetch("/api/proposals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId, title, description, amount }),
+        body: JSON.stringify(form),
       });
       data = await res.json();
     } catch {
-      setError("Server bilan bog'lanishda xatolik");
+      setError(t.common.serverError);
       setSubmitting(false);
       return;
     }
 
-    if (!res.ok) {
-      setError(data.error || "Xatolik yuz berdi");
-      setSubmitting(false);
-      return;
-    }
-
-    setClientId("");
-    setTitle("");
-    setDescription("");
-    setAmount("");
-    setShowForm(false);
     setSubmitting(false);
 
+    if (!res.ok) {
+      setError(data.error || t.common.genericError);
+      return;
+    }
+
+    setForm(EMPTY_FORM);
+    setFormOpen(false);
+    toast(t.proposals.created);
     await reload();
   }
 
@@ -145,199 +146,336 @@ export default function ProposalsPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setStatusError(data.error || "Holatni yangilab bo'lmadi");
+        setStatusError(data.error || t.common.genericError);
         return;
       }
 
+      toast(t.proposals.statusUpdated);
       await reload();
     } catch {
-      setStatusError("Server bilan bog'lanishda xatolik");
+      setStatusError(t.common.serverError);
     } finally {
       setUpdatingId(null);
     }
   }
 
-  const term = query.trim().toLowerCase();
-  const visible = term
-    ? proposals.filter(
-        (p) =>
-          p.title.toLowerCase().includes(term) ||
-          p.client.name.toLowerCase().includes(term)
-      )
-    : proposals;
+  const visible = useMemo(() => {
+    const term = query.trim().toLowerCase();
+
+    return proposals.filter((proposal) => {
+      if (filter !== "ALL" && proposal.status !== filter) return false;
+      if (!term) return true;
+
+      return (
+        proposal.title.toLowerCase().includes(term) ||
+        proposal.client.name.toLowerCase().includes(term)
+      );
+    });
+  }, [proposals, query, filter]);
+
+  const stats = useMemo(() => {
+    const count = (status: ProposalStatus) =>
+      proposals.filter((p) => p.status === status).length;
+
+    return {
+      total: proposals.length,
+      sent: count("SENT"),
+      accepted: count("ACCEPTED"),
+      value: proposals.reduce((sum, p) => sum + Number(p.amount), 0),
+    };
+  }, [proposals]);
+
+  const statusSelect = (proposal: Proposal) => (
+    <select
+      value={proposal.status}
+      onChange={(e) => handleStatusChange(proposal.id, e.target.value)}
+      disabled={updatingId === proposal.id}
+      aria-label={`${proposal.title} — ${t.common.status}`}
+      className="input w-auto py-1.5 text-sm"
+    >
+      {PROPOSAL_STATUSES.map((value) => (
+        <option key={value} value={value}>
+          {t.status[value]}
+        </option>
+      ))}
+    </select>
+  );
 
   return (
     <AppShell>
       <div className="px-5 py-6 sm:px-8 sm:py-8">
-        <div className="mx-auto max-w-5xl">
+        <div className="mx-auto max-w-6xl">
           <Topbar
             query={query}
             onQueryChange={setQuery}
-            placeholder="Taklif yoki mijoz..."
+            placeholder={t.proposals.searchPlaceholder}
           />
 
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h1 className="page-title">Takliflar</h1>
-              <p className="hint mt-1">
-                {loading ? "Yuklanmoqda..." : `${visible.length} ta taklif`}
-              </p>
-            </div>
+          <PageHeader
+            title={t.nav.proposals}
+            subtitle={
+              loading
+                ? t.common.loading
+                : fill(t.proposals.count, { n: visible.length })
+            }
+          >
             <button
-              onClick={() => setShowForm(!showForm)}
+              onClick={() => {
+                setError("");
+                setFormOpen(true);
+              }}
               className="btn btn-accent"
             >
-              {showForm ? "Bekor qilish" : "+ Taklif yaratish"}
+              <Icon name="plus" className="h-4 w-4" />
+              {t.proposals.add}
             </button>
+          </PageHeader>
+
+          <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <StatCard label={t.proposals.total} value={stats.total} />
+            <StatCard
+              label={t.status.SENT}
+              value={stats.sent}
+              tone={stats.sent > 0 ? "warning" : "neutral"}
+            />
+            <StatCard
+              label={t.status.ACCEPTED}
+              value={stats.accepted}
+              tone="success"
+            />
+            <StatCard
+              label={t.proposals.totalValue}
+              value={formatAmountShort(stats.value)}
+              tone="accent"
+            />
           </div>
 
-          {showForm && (
-            <form onSubmit={handleSubmit} className="card mb-6 space-y-4 p-6">
-              {error && <div className="alert alert-danger">{error}</div>}
+          {statusError && <div className="alert alert-danger mb-4">{statusError}</div>}
 
-              <div>
-                <label className="label">
-                  Mijoz
-                </label>
-                <select
-                  value={clientId}
-                  onChange={(e) => setClientId(e.target.value)}
-                  required
-                  className="input"
-                >
-                  <option value="">Mijozni tanlang</option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="label">
-                  Sarlavha
-                </label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                  className="input"
-                />
-              </div>
-
-              <div>
-                <label className="label">
-                  Tavsif (ixtiyoriy)
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={3}
-                  className="input"
-                />
-              </div>
-
-              <div>
-                <label className="label">
-                  Summa (so&apos;m)
-                </label>
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  required
-                  min="0"
-                  step="0.01"
-                  className="input"
-                />
-              </div>
-
+          <div className="mb-4 flex flex-wrap gap-2">
+            {(["ALL", ...PROPOSAL_STATUSES] as const).map((value) => (
               <button
-                type="submit"
-                disabled={submitting}
-                className="btn btn-accent"
+                key={value}
+                onClick={() => setFilter(value)}
+                className={`btn btn-sm ${filter === value ? "btn-accent" : "btn-ghost"}`}
               >
-                {submitting ? "Saqlanmoqda..." : "Saqlash"}
+                {value === "ALL" ? t.common.all : t.status[value]}
               </button>
-            </form>
-          )}
-
-          {statusError && (
-            <div className="alert alert-danger mb-4">{statusError}</div>
-          )}
+            ))}
+          </div>
 
           <div className="card overflow-hidden">
             {loading ? (
-              <p className="hint p-6">Yuklanmoqda...</p>
+              <TableSkeleton rows={5} cols={4} />
             ) : loadError ? (
-              <p className="p-6 text-sm text-[var(--danger)]">{loadError}</p>
+              <EmptyState
+                icon={<Icon name="alert" />}
+                title={t.common.loadFailed}
+                text={loadError === "network" ? t.common.serverError : loadError}
+                action={
+                  <button onClick={reload} className="btn btn-ghost btn-sm">
+                    {t.common.retry}
+                  </button>
+                }
+              />
             ) : visible.length === 0 ? (
-              <div className="empty">
-                <div className="empty-icon text-[var(--faint)]">
-                  <Icon name="file" />
-                </div>
-                <p className="mb-1 font-medium">
-                  {term ? "Hech narsa topilmadi" : "Hali taklif yaratilmagan"}
-                </p>
-                <p className="hint">
-                  {term
-                    ? "Boshqa so'z bilan qidirib ko'ring."
-                    : "Mijozga taklif yuboring — qabul qilinsa loyiha avtomatik ochiladi."}
-                </p>
-              </div>
+              <EmptyState
+                icon={<Icon name="file" />}
+                title={
+                  query || filter !== "ALL"
+                    ? t.common.noResults
+                    : t.proposals.emptyTitle
+                }
+                text={
+                  query || filter !== "ALL"
+                    ? t.common.noResultsHint
+                    : t.proposals.emptyText
+                }
+                action={
+                  query || filter !== "ALL" ? null : clients.length === 0 ? (
+                    <Link href="/clients" className="btn btn-ghost btn-sm">
+                      {t.clients.add}
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={() => setFormOpen(true)}
+                      className="btn btn-accent btn-sm"
+                    >
+                      <Icon name="plus" className="h-4 w-4" />
+                      {t.proposals.add}
+                    </button>
+                  )
+                }
+              />
             ) : (
-              <div className="table-wrap">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Sarlavha</th>
-                      <th>Mijoz</th>
-                      <th>Summa</th>
-                      <th>Holat</th>
-                      <th>Holatni o&apos;zgartirish</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visible.map((p) => (
-                      <tr key={p.id}>
-                        <td className="font-medium">{p.title}</td>
-                        <td className="text-[var(--muted)]">{p.client.name}</td>
-                        <td className="whitespace-nowrap text-[var(--muted)]">
-                          {formatAmount(p.amount)}
-                        </td>
-                        <td>
-                          <span className={`badge ${statusBadges[p.status]}`}>
-                            {statusLabels[p.status] || p.status}
-                          </span>
-                        </td>
-                        <td>
-                          <select
-                            value={p.status}
-                            onChange={(e) =>
-                              handleStatusChange(p.id, e.target.value)
-                            }
-                            disabled={updatingId === p.id}
-                            aria-label="Taklif holati"
-                            className="input py-1.5 text-sm"
-                          >
-                            {PROPOSAL_STATUSES.map((v) => (
-                              <option key={v} value={v}>
-                                {statusLabels[v]}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
+              <>
+                {/* Desktop: jadval */}
+                <div className="table-wrap hidden md:block">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>{t.proposals.colTitle}</th>
+                        <th>{t.proposals.colClient}</th>
+                        <th className="text-right">{t.proposals.colAmount}</th>
+                        <th>{t.proposals.colStatus}</th>
+                        <th className="text-right">{t.proposals.colChange}</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {visible.map((proposal) => (
+                        <tr key={proposal.id}>
+                          <td className="font-medium">{proposal.title}</td>
+                          <td className="text-[var(--muted)]">
+                            {proposal.client.name}
+                          </td>
+                          <td className="whitespace-nowrap text-right tabular-nums">
+                            {formatAmount(proposal.amount)}
+                          </td>
+                          <td>
+                            <span
+                              className={`badge ${proposalStatusBadges[proposal.status]}`}
+                            >
+                              {t.status[proposal.status]}
+                            </span>
+                          </td>
+                          <td className="text-right">{statusSelect(proposal)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobil: kartalar */}
+                <ul className="divide-y divide-[var(--border)] md:hidden">
+                  {visible.map((proposal) => (
+                    <li key={proposal.id} className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {proposal.title}
+                          </p>
+                          <p className="truncate text-xs text-[var(--faint)]">
+                            {proposal.client.name}
+                          </p>
+                        </div>
+                        <span className="whitespace-nowrap text-sm tabular-nums">
+                          {formatAmount(proposal.amount)}
+                        </span>
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <span
+                          className={`badge ${proposalStatusBadges[proposal.status]}`}
+                        >
+                          {t.status[proposal.status]}
+                        </span>
+                        {statusSelect(proposal)}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
           </div>
         </div>
       </div>
+
+      <Modal
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        title={t.proposals.add}
+        closeLabel={t.common.close}
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && <div className="alert alert-danger">{error}</div>}
+
+          {clients.length === 0 && (
+            <div className="alert alert-danger">{t.proposals.needClient}</div>
+          )}
+
+          <div>
+            <label htmlFor="pr-client" className="label">
+              {t.common.client}
+            </label>
+            <select
+              id="pr-client"
+              value={form.clientId}
+              onChange={(e) => setForm({ ...form, clientId: e.target.value })}
+              required
+              className="input"
+            >
+              <option value="">{t.proposals.selectClient}</option>
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="pr-title" className="label">
+              {t.proposals.colTitle}
+            </label>
+            <input
+              id="pr-title"
+              type="text"
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              required
+              className="input"
+              placeholder={t.clients.proposalTitlePlaceholder}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="pr-amount" className="label">
+              {t.proposals.colAmount}
+            </label>
+            <input
+              id="pr-amount"
+              type="number"
+              value={form.amount}
+              onChange={(e) => setForm({ ...form, amount: e.target.value })}
+              required
+              min="0"
+              step="0.01"
+              className="input"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="pr-description" className="label">
+              {t.clients.proposalDescription}{" "}
+              <span className="text-[var(--faint)]">({t.common.optional})</span>
+            </label>
+            <textarea
+              id="pr-description"
+              rows={3}
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              className="input"
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-1">
+            <button
+              type="submit"
+              disabled={submitting || clients.length === 0}
+              className="btn btn-accent"
+            >
+              {submitting ? t.common.saving : t.common.save}
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormOpen(false)}
+              className="btn btn-ghost"
+            >
+              {t.common.cancel}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </AppShell>
   );
 }

@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import AppShell from "../AppShell";
 import Topbar from "../Topbar";
 import Icon from "../Icon";
+import { EmptyState, PageHeader, TableSkeleton } from "../components/ui";
 import { formatDate } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/client";
+import { fill } from "@/lib/i18n/dictionaries";
 import {
   CONTRACT_STATUSES,
   contractStatusBadges,
@@ -30,6 +32,7 @@ async function fetchContracts(): Promise<{ contracts: Contract[]; error: string 
   try {
     const res = await fetch("/api/contracts");
     const data = await res.json();
+
     return {
       contracts: Array.isArray(data) ? data : [],
       error: res.ok ? "" : data?.error || "error",
@@ -40,8 +43,7 @@ async function fetchContracts(): Promise<{ contracts: Contract[]; error: string 
 }
 
 export default function ContractsPage() {
-  const { t, locale } = useI18n();
-  const en = locale === "en";
+  const { t } = useI18n();
 
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,43 +68,49 @@ export default function ContractsPage() {
     };
   }, []);
 
-  const term = query.trim().toLowerCase();
-  const visible = contracts.filter((c) => {
-    if (filter !== "ALL" && c.status !== filter) return false;
-    if (!term) return true;
-    return (
-      c.projectTitle.toLowerCase().includes(term) ||
-      c.clientName.toLowerCase().includes(term)
-    );
-  });
+  const visible = useMemo(() => {
+    const term = query.trim().toLowerCase();
+
+    return contracts.filter((contract) => {
+      if (filter !== "ALL" && contract.status !== filter) return false;
+      if (!term) return true;
+
+      return (
+        contract.projectTitle.toLowerCase().includes(term) ||
+        contract.clientName.toLowerCase().includes(term) ||
+        (contract.title ?? "").toLowerCase().includes(term)
+      );
+    });
+  }, [contracts, filter, query]);
 
   const counts = {
     ALL: contracts.length,
     ...Object.fromEntries(
-      CONTRACT_STATUSES.map((s) => [s, contracts.filter((c) => c.status === s).length])
+      CONTRACT_STATUSES.map((status) => [
+        status,
+        contracts.filter((contract) => contract.status === status).length,
+      ])
     ),
   } as Record<string, number>;
 
   return (
     <AppShell>
       <div className="px-5 py-6 sm:px-8 sm:py-8">
-        <div className="mx-auto max-w-5xl">
+        <div className="mx-auto max-w-6xl">
           <Topbar
             query={query}
             onQueryChange={setQuery}
-            placeholder={en ? "Project or client..." : "Loyiha yoki mijoz..."}
+            placeholder={t.contracts.searchPlaceholder}
           />
 
-          <div className="mb-5">
-            <h1 className="page-title">{t.nav.contracts}</h1>
-            <p className="hint mt-1">
-              {loading
+          <PageHeader
+            title={t.nav.contracts}
+            subtitle={
+              loading
                 ? t.common.loading
-                : en
-                  ? `${visible.length} contracts`
-                  : `${visible.length} ta shartnoma`}
-            </p>
-          </div>
+                : fill(t.contracts.count, { n: visible.length })
+            }
+          />
 
           <div className="mb-4 flex flex-wrap gap-2">
             {(["ALL", ...CONTRACT_STATUSES] as const).map((value) => (
@@ -112,89 +120,151 @@ export default function ContractsPage() {
                 className={`btn btn-sm ${filter === value ? "btn-accent" : "btn-ghost"}`}
               >
                 {value === "ALL" ? t.common.all : t.status[value]}
-                <span className="opacity-60">{counts[value] ?? 0}</span>
+                <span className={filter === value ? "opacity-80" : "text-[var(--faint)]"}>
+                  {counts[value] ?? 0}
+                </span>
               </button>
             ))}
           </div>
 
           <div className="card overflow-hidden">
             {loading ? (
-              <div className="space-y-3 p-5">
-                {[0, 1, 2].map((i) => (
-                  <div key={i} className="skeleton h-14 w-full rounded-xl" />
-                ))}
-              </div>
+              <TableSkeleton rows={4} cols={4} />
             ) : failed ? (
-              <p className="p-6 text-sm text-[var(--danger)]">{t.common.serverError}</p>
+              <EmptyState
+                icon={<Icon name="alert" />}
+                title={t.common.loadFailed}
+                text={t.common.serverError}
+                action={
+                  <button
+                    onClick={() => location.reload()}
+                    className="btn btn-ghost btn-sm"
+                  >
+                    {t.common.retry}
+                  </button>
+                }
+              />
             ) : visible.length === 0 ? (
-              <div className="empty">
-                <div className="empty-icon text-[var(--faint)]">
-                  <Icon name="file" />
-                </div>
-                <p className="mb-1 font-medium">
-                  {contracts.length === 0
-                    ? en ? "No contracts yet" : "Hali shartnoma yo'q"
-                    : en ? "Nothing matches" : "Mos keladigani yo'q"}
-                </p>
-                <p className="hint max-w-sm">
-                  {contracts.length === 0
-                    ? en
-                      ? "Contracts are written inside a project and stay linked to it."
-                      : "Shartnoma loyiha ichida yoziladi va o'sha loyihaga bog'langan holda saqlanadi."
-                    : en ? "Try another filter." : "Boshqa filtrni tanlang."}
-                </p>
-                {contracts.length === 0 && (
-                  <Link href="/projects" className="btn btn-ghost btn-sm mt-4">
-                    {t.nav.projects}
-                  </Link>
-                )}
-              </div>
+              <EmptyState
+                icon={<Icon name="contract" />}
+                title={
+                  contracts.length === 0
+                    ? t.contracts.emptyTitle
+                    : t.contracts.filterEmpty
+                }
+                text={
+                  contracts.length === 0
+                    ? t.contracts.emptyText
+                    : t.contracts.filterEmptyText
+                }
+                action={
+                  contracts.length === 0 ? (
+                    <Link href="/projects" className="btn btn-ghost btn-sm">
+                      {t.nav.projects}
+                    </Link>
+                  ) : null
+                }
+              />
             ) : (
-              <div className="table-wrap">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>{en ? "Project" : "Loyiha"}</th>
-                      <th>{en ? "Client" : "Mijoz"}</th>
-                      <th>{en ? "Created" : "Yaratilgan"}</th>
-                      <th>{t.common.status}</th>
-                      <th />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visible.map((contract) => (
-                      <tr key={contract.id}>
-                        <td>
-                          <Link href={`/projects/${contract.projectId}`} className="link font-medium">
-                            {contract.projectTitle}
-                          </Link>
-                          <p className="mt-0.5 max-w-xs truncate text-xs" style={{ color: "var(--faint)" }}>
-                            {contract.excerpt}
-                          </p>
-                        </td>
-                        <td>
-                          <Link href={`/clients/${contract.clientId}`} className="link-muted">
-                            {contract.clientName}
-                          </Link>
-                        </td>
-                        <td className="whitespace-nowrap text-[var(--muted)]">
-                          {formatDate(contract.createdAt)}
-                        </td>
-                        <td>
-                          <span className={`badge ${contractStatusBadges[contract.status]}`}>
+              <>
+                {/* Desktop: jadval */}
+                <div className="table-wrap hidden md:block">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>{t.contracts.colContract}</th>
+                        <th>{t.contracts.colProject}</th>
+                        <th>{t.contracts.colClient}</th>
+                        <th>{t.contracts.colCreated}</th>
+                        <th>{t.common.status}</th>
+                        <th className="text-right">{t.common.actions}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visible.map((contract) => (
+                        <tr key={contract.id}>
+                          <td>
+                            <p className="font-medium">
+                              {contract.title || t.contracts.untitled}
+                            </p>
+                            <p
+                              className="mt-0.5 max-w-xs truncate text-xs"
+                              style={{ color: "var(--faint)" }}
+                            >
+                              {contract.excerpt}
+                            </p>
+                          </td>
+                          <td>
+                            <Link
+                              href={`/projects/${contract.projectId}`}
+                              className="link"
+                            >
+                              {contract.projectTitle}
+                            </Link>
+                          </td>
+                          <td>
+                            <Link
+                              href={`/clients/${contract.clientId}`}
+                              className="link-muted"
+                            >
+                              {contract.clientName}
+                            </Link>
+                          </td>
+                          <td className="whitespace-nowrap text-[var(--muted)]">
+                            {formatDate(contract.createdAt)}
+                          </td>
+                          <td>
+                            <span
+                              className={`badge ${contractStatusBadges[contract.status]}`}
+                            >
+                              {t.status[contract.status]}
+                            </span>
+                          </td>
+                          <td className="text-right">
+                            <Link
+                              href={`/projects/${contract.projectId}`}
+                              className="btn btn-ghost btn-sm"
+                            >
+                              {t.common.seeDetails}
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobil: kartalar */}
+                <ul className="divide-y divide-[var(--border)] md:hidden">
+                  {visible.map((contract) => (
+                    <li key={contract.id}>
+                      <Link
+                        href={`/projects/${contract.projectId}`}
+                        className="block p-4 transition-colors hover:bg-[var(--surface-2)]"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">
+                              {contract.title || t.contracts.untitled}
+                            </p>
+                            <p className="truncate text-xs text-[var(--faint)]">
+                              {contract.projectTitle} · {contract.clientName}
+                            </p>
+                          </div>
+                          <span
+                            className={`badge shrink-0 ${contractStatusBadges[contract.status]}`}
+                          >
                             {t.status[contract.status]}
                           </span>
-                        </td>
-                        <td>
-                          <Link href={`/projects/${contract.projectId}`} className="btn btn-ghost btn-sm">
-                            {t.common.seeDetails}
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        </div>
+                        <p className="mt-2 text-xs text-[var(--muted)]">
+                          {formatDate(contract.createdAt)}
+                        </p>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
           </div>
         </div>

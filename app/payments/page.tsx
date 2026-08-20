@@ -33,9 +33,21 @@ type Payment = {
   clientName: string;
 };
 
-type Totals = { all: number; paid: number; outstanding: number; overdue: number };
+type Totals = {
+  all: number;
+  paid: number;
+  outstanding: number;
+  overdue: number;
+  upcoming: number;
+};
 
-const EMPTY_TOTALS: Totals = { all: 0, paid: 0, outstanding: 0, overdue: 0 };
+const EMPTY_TOTALS: Totals = {
+  all: 0,
+  paid: 0,
+  outstanding: 0,
+  overdue: 0,
+  upcoming: 0,
+};
 
 async function fetchPayments(): Promise<{
   payments: Payment[];
@@ -135,20 +147,6 @@ export default function PaymentsPage() {
     });
   }, [payments, filter, query]);
 
-  // Yaqin 7 kun ichida to'lanishi kerak bo'lganlar
-  const upcoming = useMemo(() => {
-    const now = Date.now();
-    const week = now + 7 * 24 * 60 * 60 * 1000;
-
-    return payments
-      .filter((payment) => {
-        if (payment.status === "PAID") return false;
-        const due = new Date(payment.dueDate).getTime();
-        return due >= now && due <= week;
-      })
-      .reduce((sum, payment) => sum + Number(payment.amount), 0);
-  }, [payments]);
-
   return (
     <AppShell>
       <div className="px-5 py-6 sm:px-8 sm:py-8">
@@ -189,7 +187,7 @@ export default function PaymentsPage() {
             />
             <StatCard
               label={t.payments.upcoming}
-              value={formatAmountShort(upcoming)}
+              value={formatAmountShort(totals.upcoming)}
               icon={<Icon name="calendar" className="h-4 w-4" />}
             />
           </div>

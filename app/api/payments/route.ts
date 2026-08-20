@@ -28,16 +28,29 @@ export async function GET(request: Request) {
     orderBy: { dueDate: "desc" },
   });
 
+  // Yaqin 7 kun ichida to'lanishi kerak bo'lganlar shu yerda hisoblanadi —
+  // brauzerda sana o'qish render'ni beqaror qiladi.
+  const now = Date.now();
+  const weekAhead = now + 7 * 24 * 60 * 60 * 1000;
+
   const totals = payments.reduce(
     (acc, p) => {
       const amount = Number(p.amount);
       acc.all += amount;
-      if (p.status === "PAID") acc.paid += amount;
-      else acc.outstanding += amount;
+
+      if (p.status === "PAID") {
+        acc.paid += amount;
+      } else {
+        acc.outstanding += amount;
+
+        const due = p.dueDate.getTime();
+        if (due >= now && due <= weekAhead) acc.upcoming += amount;
+      }
+
       if (p.status === "OVERDUE") acc.overdue += amount;
       return acc;
     },
-    { all: 0, paid: 0, outstanding: 0, overdue: 0 }
+    { all: 0, paid: 0, outstanding: 0, overdue: 0, upcoming: 0 }
   );
 
   return NextResponse.json({

@@ -79,6 +79,12 @@ export const CONTRACT_STATUSES = ["DRAFT", "PENDING_APPROVAL", "APPROVED"] as co
 
 export type ContractStatus = (typeof CONTRACT_STATUSES)[number];
 
+export const contractStatusLabels: Record<ContractStatus, string> = {
+  DRAFT: "Qoralama",
+  PENDING_APPROVAL: "Tasdiq kutilmoqda",
+  APPROVED: "Tasdiqlangan",
+};
+
 export const contractStatusBadges: Record<ContractStatus, string> = {
   DRAFT: "badge-neutral",
   PENDING_APPROVAL: "badge-warning",
