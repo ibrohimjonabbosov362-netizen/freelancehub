@@ -1,4 +1,13 @@
 import { getDictionary, getLocale } from "@/lib/i18n/server";
+import { CURRENCY_CODE, formatAmountShort } from "@/lib/format";
+
+/**
+ * Ko'rgazma summalari valyutaga qarab tanlanadi — tilga emas. Aks holda
+ * inglizcha sahifada $ ko'rinib, ilova ichida so'm chiqib qolardi.
+ */
+const MOCK = CURRENCY_CODE === "UZS"
+  ? { pending: 31_200_000, first: 15_200_000, second: 10_800_000 }
+  : { pending: 2_450, first: 1_200, second: 850 };
 
 const navIcons: Record<string, string> = {
   dashboard: "M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6V11h-6v9Zm0-16v5h6V4h-6Z",
@@ -51,7 +60,7 @@ export default async function DashboardPreview() {
   const stats = [
     { label: t.nav.clients, value: "12" },
     { label: t.dashboard.activeProjects, value: "5" },
-    { label: t.dashboard.pending, value: en ? "$2,450" : "31,2 mln" },
+    { label: t.dashboard.pending, value: formatAmountShort(MOCK.pending) },
   ];
 
   const projects = [
@@ -66,12 +75,12 @@ export default async function DashboardPreview() {
   ];
 
   const payments = [
-    { name: "Acme Corp", amount: en ? "$1,200" : "15,2 mln", cls: "badge-warning", state: t.status.PENDING },
-    { name: "StartupX", amount: en ? "$850" : "10,8 mln", cls: "badge-danger", state: t.status.OVERDUE },
+    { name: "Acme Corp", amount: formatAmountShort(MOCK.first), cls: "badge-warning", state: t.status.PENDING },
+    { name: "StartupX", amount: formatAmountShort(MOCK.second), cls: "badge-danger", state: t.status.OVERDUE },
   ];
 
   const activity = [
-    { icon: "payments", text: en ? "Payment received · $1,200" : "To'lov qabul qilindi · 15,2 mln", when: en ? "2h" : "2 soat" },
+    { icon: "payments", text: `${t.dashboard.activityPayment.replace("{amount}", formatAmountShort(MOCK.first))}`, when: en ? "2h" : "2 soat" },
     { icon: "proposals", text: en ? "Proposal accepted · Mobile App" : "Taklif qabul qilindi · Mobil ilova", when: en ? "5h" : "5 soat" },
     { icon: "contracts", text: en ? "Contract signed · Acme Corp" : "Shartnoma imzolandi · Acme Corp", when: en ? "1d" : "1 kun" },
     { icon: "clients", text: en ? "New client · Shopify" : "Yangi mijoz · Shopify", when: en ? "2d" : "2 kun" },

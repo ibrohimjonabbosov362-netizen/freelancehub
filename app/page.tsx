@@ -5,6 +5,13 @@ import DashboardPreview from "./components/DashboardPreview";
 import Faq from "./components/Faq";
 import { getDictionary, getLocale } from "@/lib/i18n/server";
 import { isStripeConfigured } from "@/lib/stripe";
+import { CURRENCY_CODE, formatAmountShort } from "@/lib/format";
+
+// Ko'rgazma summalari valyutaga mos bo'lsin (tilga emas)
+const MOCK_ROWS =
+  CURRENCY_CODE === "UZS"
+    ? [15_200_000, 10_800_000, 5_100_000]
+    : [1_200, 850, 400];
 
 const featureIcons = [
   "M16 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M9.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z",
@@ -163,9 +170,9 @@ export default async function HomePage() {
       preview: (
         <StepPreviewPayments
           rows={[
-            { amount: en ? "$1,200" : "15,2 mln", cls: "badge-success" },
-            { amount: en ? "$850" : "10,8 mln", cls: "badge-warning" },
-            { amount: en ? "$400" : "5,1 mln", cls: "badge-danger" },
+            { amount: formatAmountShort(MOCK_ROWS[0]), cls: "badge-success" },
+            { amount: formatAmountShort(MOCK_ROWS[1]), cls: "badge-warning" },
+            { amount: formatAmountShort(MOCK_ROWS[2]), cls: "badge-danger" },
           ]}
         />
       ),
