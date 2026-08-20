@@ -6,14 +6,13 @@ import Link from "next/link";
 import AppShell from "../../AppShell";
 import Icon from "../../Icon";
 import { formatAmount, formatDate } from "@/lib/format";
+import { useI18n } from "@/lib/i18n/client";
 import { contractTemplates, getTemplate } from "@/lib/contractTemplates";
 import {
+  PAYMENT_STATUSES,
   PROJECT_STATUSES,
   contractStatusBadges,
-  contractStatusLabels,
   paymentStatusBadges,
-  paymentStatusLabels,
-  projectStatusLabels,
   type ContractStatus,
   type PaymentStatus,
   type ProjectStatus,
@@ -57,6 +56,7 @@ async function fetchProject(id: string): Promise<ProjectDetail | null> {
 }
 
 export default function ProjectDetailPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
@@ -129,13 +129,13 @@ export default function ProjectDetailPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.error || "Amalni bajarib bo'lmadi");
+        setError(data.error || t.common.genericError);
         return false;
       }
 
       return true;
     } catch {
-      setError("Server bilan bog'lanishda xatolik");
+      setError(t.common.serverError);
       return false;
     } finally {
       setBusy(false);
@@ -167,7 +167,7 @@ export default function ProjectDetailPage() {
   }
 
   async function handleDeletePayment(paymentId: string) {
-    if (!confirm("To'lovni o'chirasizmi?")) return;
+    if (!confirm(t.projectDetail.deletePaymentConfirm)) return;
     if (await send(`/api/payments/${paymentId}`, "DELETE")) await reload();
   }
 
@@ -192,7 +192,7 @@ export default function ProjectDetailPage() {
   }
 
   async function handleDeleteProject() {
-    if (!confirm("Loyihani o'chirasizmi? Shartnoma va to'lovlar ham o'chadi.")) return;
+    if (!confirm(t.projectDetail.deleteConfirm)) return;
     if (await send(`/api/projects/${id}`, "DELETE")) {
       router.push("/projects");
       router.refresh();
@@ -205,7 +205,7 @@ export default function ProjectDetailPage() {
     const template = getTemplate(templateId);
     if (!template) return;
 
-    if (contractText.trim() && !confirm("Mavjud matn almashtiriladi. Davom etamizmi?")) {
+    if (contractText.trim() && !confirm(t.projectDetail.replaceConfirm)) {
       return;
     }
 
@@ -213,7 +213,7 @@ export default function ProjectDetailPage() {
 
     setContractText(
       template.build({
-        freelancerName: userName || "Ijrochi",
+        freelancerName: userName || t.projectDetail.contractor,
         clientName: project.client.name,
         clientCompany: project.client.company,
         projectTitle: project.title,
@@ -227,7 +227,7 @@ export default function ProjectDetailPage() {
   if (loading) {
     return (
       <AppShell>
-        <p className="hint px-5 py-8 sm:px-8 sm:py-10">Yuklanmoqda...</p>
+        <p className="hint px-5 py-8 sm:px-8 sm:py-10">{t.common.loading}</p>
       </AppShell>
     );
   }
@@ -240,9 +240,9 @@ export default function ProjectDetailPage() {
             <div className="empty-icon text-[var(--faint)]">
               <Icon name="search" />
             </div>
-            <p className="mb-1 font-medium">Loyiha topilmadi</p>
+            <p className="mb-1 font-medium">{t.projectDetail.notFound}</p>
             <Link href="/projects" className="link mt-2 text-sm">
-              Loyihalar ro&apos;yxatiga qaytish
+              {t.projectDetail.back}
             </Link>
           </div>
         </div>
@@ -257,12 +257,21 @@ export default function ProjectDetailPage() {
   const progress = totalDue > 0 ? Math.round((totalPaid / totalDue) * 100) : 0;
   const signed = Boolean(project.contract?.signedAt);
 
+  // Mijoz → Taklif → Loyiha → Shartnoma → To'lov
+  const workflowSteps = [
+    { label: t.projectDetail.stepClient, done: true },
+    { label: t.projectDetail.stepProposal, done: Boolean(project.proposal) },
+    { label: t.projectDetail.stepProject, done: true },
+    { label: t.projectDetail.stepContract, done: signed },
+    { label: t.projectDetail.stepPayment, done: totalPaid > 0 },
+  ];
+
   return (
     <AppShell>
       <div className="px-5 py-8 sm:px-8 sm:py-10">
         <div className="mx-auto max-w-4xl">
           <Link href="/projects" className="link-muted text-sm">
-            ← Loyihalar ro&apos;yxatiga qaytish
+            ← {t.projectDetail.back}
           </Link>
 
           {error && <div className="alert alert-danger mt-4">{error}</div>}
@@ -273,11 +282,11 @@ export default function ProjectDetailPage() {
               <div className="min-w-0">
                 <h1 className="text-xl font-semibold">{project.title}</h1>
                 <p className="hint mt-1">
-                  Mijoz:{" "}
+                  {t.common.client}:{" "}
                   <Link href={`/clients/${project.client.id}`} className="link">
                     {project.client.name}
                   </Link>{" "}
-                  · Yaratilgan: {formatDate(project.createdAt)}
+                  · {t.projectDetail.created}: {formatDate(project.createdAt)}
                 </p>
               </div>
 
@@ -286,13 +295,13 @@ export default function ProjectDetailPage() {
                 disabled={busy}
                 className="btn btn-danger btn-sm"
               >
-                O&apos;chirish
+                {t.common.delete}
               </button>
             </div>
 
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <label htmlFor="pr-status" className="hint">
-                Holat:
+                {t.projectDetail.statusLabel}
               </label>
               <select
                 id="pr-status"
@@ -303,18 +312,86 @@ export default function ProjectDetailPage() {
               >
                 {PROJECT_STATUSES.map((value) => (
                   <option key={value} value={value}>
-                    {projectStatusLabels[value]}
+                    {t.status[value]}
                   </option>
                 ))}
               </select>
             </div>
           </div>
 
+          {/* Ish oqimi: mijozdan to'lovgacha */}
+          <div className="card mb-6 p-6">
+            <h2 className="section-title mb-4">{t.projectDetail.workflow}</h2>
+
+            <ol className="flex items-start gap-1 overflow-x-auto pb-1">
+              {workflowSteps.map((step, index) => (
+                <li
+                  key={step.label}
+                  className="flex min-w-0 flex-1 flex-col items-center gap-2 text-center"
+                >
+                  <div className="flex w-full items-center">
+                    <span
+                      className={`h-px flex-1 ${
+                        index === 0 ? "opacity-0" : ""
+                      }`}
+                      style={{
+                        background: workflowSteps[index - 1]?.done
+                          ? "var(--accent-2)"
+                          : "var(--border)",
+                      }}
+                      aria-hidden="true"
+                    />
+                    <span
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-semibold"
+                      style={
+                        step.done
+                          ? {
+                              background:
+                                "linear-gradient(135deg, var(--accent-1), var(--accent-2))",
+                              borderColor: "transparent",
+                              color: "#fff",
+                            }
+                          : {
+                              background: "var(--surface-2)",
+                              borderColor: "var(--border)",
+                              color: "var(--faint)",
+                            }
+                      }
+                    >
+                      {step.done ? (
+                        <Icon name="check" className="h-4 w-4" />
+                      ) : (
+                        index + 1
+                      )}
+                    </span>
+                    <span
+                      className={`h-px flex-1 ${
+                        index === workflowSteps.length - 1 ? "opacity-0" : ""
+                      }`}
+                      style={{
+                        background: step.done ? "var(--accent-2)" : "var(--border)",
+                      }}
+                      aria-hidden="true"
+                    />
+                  </div>
+
+                  <span
+                    className={`text-[0.6875rem] leading-tight sm:text-xs ${
+                      step.done ? "text-[var(--ink)]" : "text-[var(--faint)]"
+                    }`}
+                  >
+                    {step.label}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+
           {/* To'lovlar */}
           <div className="card mb-6 p-6">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="section-title">To&apos;lovlar</h2>
+                <h2 className="section-title">{t.nav.payments}</h2>
                 <p className="hint mt-1">
                   {formatAmount(totalPaid)} / {formatAmount(totalDue)}
                 </p>
@@ -323,7 +400,7 @@ export default function ProjectDetailPage() {
                 onClick={() => setShowPaymentForm(!showPaymentForm)}
                 className="btn btn-ghost btn-sm"
               >
-                {showPaymentForm ? "Bekor qilish" : "+ To'lov"}
+                {showPaymentForm ? t.common.cancel : t.projectDetail.addPayment}
               </button>
             </div>
 
@@ -334,7 +411,7 @@ export default function ProjectDetailPage() {
                 aria-valuenow={progress}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-label="To'lov jarayoni"
+                aria-label={t.projectDetail.paymentProgress}
               >
                 <div
                   className="h-full rounded-full transition-all"
@@ -355,7 +432,7 @@ export default function ProjectDetailPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label htmlFor="pay-amount" className="label">
-                      Summa (so&apos;m)
+                      {t.common.amount}
                     </label>
                     <input
                       id="pay-amount"
@@ -370,7 +447,7 @@ export default function ProjectDetailPage() {
                   </div>
                   <div>
                     <label htmlFor="pay-due" className="label">
-                      To&apos;lov muddati
+                      {t.common.dueDate}
                     </label>
                     <input
                       id="pay-due"
@@ -387,13 +464,13 @@ export default function ProjectDetailPage() {
                   disabled={busy}
                   className="btn btn-accent btn-sm"
                 >
-                  {busy ? "Saqlanmoqda..." : "Qo'shish"}
+                  {busy ? t.common.saving : t.common.add}
                 </button>
               </form>
             )}
 
             {project.payments.length === 0 ? (
-              <p className="hint">Hali to&apos;lov qo&apos;shilmagan.</p>
+              <p className="hint">{t.projectDetail.noPayments}</p>
             ) : (
               <ul className="space-y-3">
                 {project.payments.map((payment) => (
@@ -404,15 +481,15 @@ export default function ProjectDetailPage() {
                     <div className="min-w-0">
                       <p className="font-medium">{formatAmount(payment.amount)}</p>
                       <p className="text-xs text-[var(--faint)]">
-                        Muddat: {formatDate(payment.dueDate)}
+                        {t.common.dueDate}: {formatDate(payment.dueDate)}
                         {payment.paidAt &&
-                          ` · To'langan: ${formatDate(payment.paidAt)}`}
+                          ` · ${t.status.PAID}: ${formatDate(payment.paidAt)}`}
                       </p>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={`badge ${paymentStatusBadges[payment.status]}`}>
-                        {paymentStatusLabels[payment.status]}
+                        {t.status[payment.status]}
                       </span>
 
                       <select
@@ -421,12 +498,12 @@ export default function ProjectDetailPage() {
                           handlePaymentStatus(payment.id, e.target.value)
                         }
                         disabled={busy}
-                        aria-label="To'lov holati"
+                        aria-label={t.projectDetail.paymentStatus}
                         className="input w-auto py-1.5 text-sm"
                       >
-                        {Object.entries(paymentStatusLabels).map(([v, l]) => (
-                          <option key={v} value={v}>
-                            {l}
+                        {PAYMENT_STATUSES.map((value) => (
+                          <option key={value} value={value}>
+                            {t.status[value]}
                           </option>
                         ))}
                       </select>
@@ -436,7 +513,7 @@ export default function ProjectDetailPage() {
                         disabled={busy}
                         className="btn btn-danger btn-sm"
                       >
-                        O&apos;chirish
+                        {t.common.delete}
                       </button>
                     </div>
                   </li>
@@ -448,14 +525,14 @@ export default function ProjectDetailPage() {
           {/* Shartnoma */}
           <div className="card p-6">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="section-title">Shartnoma</h2>
+              <h2 className="section-title">{t.projectDetail.contract}</h2>
 
               <div className="flex flex-wrap items-center gap-2">
                 {project.contract && (
                   <span
                     className={`badge ${contractStatusBadges[project.contract.status]}`}
                   >
-                    {contractStatusLabels[project.contract.status]}
+                    {t.status[project.contract.status]}
                     {signed && ` · ${formatDate(project.contract.signedAt)}`}
                   </span>
                 )}
@@ -466,16 +543,16 @@ export default function ProjectDetailPage() {
                       href={`/projects/${id}/print?download=1`}
                       className="btn btn-ghost btn-sm"
                     >
-                      PDF yuklab olish
+                      {t.projectDetail.downloadPdf}
                     </Link>
                   ) : (
                     <Link
                       href="/billing"
                       className="btn btn-ghost btn-sm opacity-70"
-                      title="PDF eksport Premium tarifda mavjud"
+                      title={t.projectDetail.pdfPremium}
                     >
                       <Icon name="lock" className="h-3.5 w-3.5" />
-                      PDF eksport
+                      {t.projectDetail.pdfExport}
                     </Link>
                   )
                 )}
@@ -499,7 +576,7 @@ export default function ProjectDetailPage() {
                       }}
                       className="input"
                     >
-                      <option value="">Shablonni tanlang...</option>
+                      <option value="">{t.projectDetail.selectTemplate}</option>
                       {contractTemplates.map((t) => (
                         <option key={t.id} value={t.id}>
                           {t.name} — {t.description}
@@ -527,8 +604,8 @@ export default function ProjectDetailPage() {
             {!signed && (
               <div className="mb-3">
                 <label htmlFor="contract-title" className="label">
-                  Shartnoma nomi{" "}
-                  <span className="text-[var(--faint)]">(ixtiyoriy)</span>
+                  {t.projectDetail.contractName}{" "}
+                  <span className="text-[var(--faint)]">({t.common.optional})</span>
                 </label>
                 <input
                   id="contract-title"
@@ -539,7 +616,7 @@ export default function ProjectDetailPage() {
                     setContractDirty(true);
                   }}
                   className="input"
-                  placeholder="Xizmat ko'rsatish shartnomasi"
+                  placeholder={t.projectDetail.contractNamePlaceholder}
                 />
               </div>
             )}
@@ -556,7 +633,7 @@ export default function ProjectDetailPage() {
                   setContractDirty(true);
                 }}
                 rows={12}
-                placeholder="Shartnoma matnini shu yerga yozing yoki yuqoridan shablon tanlang..."
+                placeholder={t.projectDetail.contractBodyPlaceholder}
                 className="input font-mono text-[13px]"
               />
             )}
@@ -568,7 +645,7 @@ export default function ProjectDetailPage() {
                   disabled={busy || !contractText.trim()}
                   className="btn btn-accent btn-sm"
                 >
-                  Saqlash
+                  {t.common.save}
                 </button>
               )}
 
@@ -579,7 +656,7 @@ export default function ProjectDetailPage() {
                   disabled={busy || !contractText.trim()}
                   className="btn btn-ghost btn-sm"
                 >
-                  Tasdiqqa yuborish
+                  {t.projectDetail.sendForApproval}
                 </button>
               )}
 
@@ -589,7 +666,7 @@ export default function ProjectDetailPage() {
                   disabled={busy}
                   className="btn btn-ghost btn-sm"
                 >
-                  Qoralamaga qaytarish
+                  {t.projectDetail.backToDraft}
                 </button>
               )}
 
@@ -599,10 +676,10 @@ export default function ProjectDetailPage() {
                   disabled={busy || contractDirty}
                   className="btn btn-ghost btn-sm"
                   title={
-                    contractDirty ? "Avval o'zgarishlarni saqlang" : "Shartnomani imzolash"
+                    contractDirty ? t.projectDetail.saveFirst : t.projectDetail.signHint
                   }
                 >
-                  Imzolash
+                  {t.projectDetail.sign}
                 </button>
               )}
 
@@ -612,7 +689,7 @@ export default function ProjectDetailPage() {
                   disabled={busy}
                   className="btn btn-ghost btn-sm"
                 >
-                  Imzoni bekor qilish
+                  {t.projectDetail.unsign}
                 </button>
               )}
             </div>

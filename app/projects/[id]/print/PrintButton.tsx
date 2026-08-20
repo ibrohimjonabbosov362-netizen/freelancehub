@@ -3,8 +3,10 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useI18n } from "@/lib/i18n/client";
 
 export default function PrintButton({ backHref }: { backHref: string }) {
+  const { t } = useI18n();
   const auto = useSearchParams().get("download") === "1";
 
   // "PDF yuklab olish" bosilganda saqlash oynasi o'zi ochiladi
@@ -17,15 +19,12 @@ export default function PrintButton({ backHref }: { backHref: string }) {
   return (
     <div className="no-print mb-6 flex flex-wrap items-center gap-3">
       <Link href={backHref} className="btn btn-ghost btn-sm">
-        ← Loyihaga qaytish
+        ← {t.document.backToProject}
       </Link>
       <button onClick={() => window.print()} className="btn btn-accent btn-sm">
-        Chop etish / PDF saqlash
+        {t.document.printSave}
       </button>
-      <span className="hint">
-        Ochilgan oynada &quot;Saqlash manzili&quot; sifatida <strong>PDF</strong> ni
-        tanlang.
-      </span>
+      <span className="hint">{t.document.printHint}</span>
     </div>
   );
 }

@@ -5,14 +5,13 @@ import { formatAmount, formatDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { Suspense } from "react";
 import PrintButton from "./PrintButton";
+import { getDictionary } from "@/lib/i18n/server";
+import { fill } from "@/lib/i18n/dictionaries";
 
-export const metadata = { title: "Shartnoma" };
-
-const paymentStatusLabels: Record<string, string> = {
-  PENDING: "Kutilmoqda",
-  PAID: "To'langan",
-  OVERDUE: "Muddati o'tgan",
-};
+export async function generateMetadata() {
+  const t = await getDictionary();
+  return { title: t.document.title };
+}
 
 export default async function ContractPrintPage({
   params,
@@ -27,7 +26,8 @@ export default async function ContractPrintPage({
 
   const { id } = await params;
 
-  const [planInfo, project, user] = await Promise.all([
+  const [t, planInfo, project, user] = await Promise.all([
+    getDictionary(),
     getPlanInfo(userId),
     prisma.project.findFirst({
       where: { id, userId },
@@ -60,7 +60,7 @@ export default async function ContractPrintPage({
       <article className="print-sheet">
         <header className="doc-header">
           <div>
-            <h1 className="doc-title">Shartnoma</h1>
+            <h1 className="doc-title">{t.document.title}</h1>
             <p className="doc-sub">{project.title}</p>
           </div>
           <div className="doc-brand">
@@ -70,12 +70,12 @@ export default async function ContractPrintPage({
 
         <section className="doc-parties">
           <div>
-            <p className="doc-label">Ijrochi</p>
+            <p className="doc-label">{t.document.contractor}</p>
             <p className="doc-value">{user?.name}</p>
             <p className="doc-muted">{user?.email}</p>
           </div>
           <div>
-            <p className="doc-label">Buyurtmachi</p>
+            <p className="doc-label">{t.document.clientParty}</p>
             <p className="doc-value">{project.client.name}</p>
             <p className="doc-muted">{project.client.email}</p>
             {project.client.company && (
@@ -90,13 +90,13 @@ export default async function ContractPrintPage({
 
         {project.payments.length > 0 && (
           <section className="doc-section">
-            <h2 className="doc-h2">To&apos;lov jadvali</h2>
+            <h2 className="doc-h2">{t.document.paymentSchedule}</h2>
             <table className="doc-table">
               <thead>
                 <tr>
-                  <th>Muddat</th>
-                  <th>Summa</th>
-                  <th>Holat</th>
+                  <th>{t.document.due}</th>
+                  <th>{t.document.amount}</th>
+                  <th>{t.document.status}</th>
                 </tr>
               </thead>
               <tbody>
@@ -104,11 +104,11 @@ export default async function ContractPrintPage({
                   <tr key={payment.id}>
                     <td>{formatDate(payment.dueDate)}</td>
                     <td>{formatAmount(payment.amount.toString())}</td>
-                    <td>{paymentStatusLabels[payment.status]}</td>
+                    <td>{t.status[payment.status as keyof typeof t.status]}</td>
                   </tr>
                 ))}
                 <tr className="doc-total">
-                  <td>Jami</td>
+                  <td>{t.document.total}</td>
                   <td>{formatAmount(total)}</td>
                   <td />
                 </tr>
@@ -120,23 +120,23 @@ export default async function ContractPrintPage({
         <footer className="doc-footer">
           {project.contract.signedAt ? (
             <p>
-              Imzolangan: <strong>{formatDate(project.contract.signedAt)}</strong>
+              {t.document.signedOn}:{" "}
+              <strong>{formatDate(project.contract.signedAt)}</strong>
             </p>
           ) : (
             <div className="doc-signatures">
               <div>
                 <div className="doc-line" />
-                <p className="doc-muted">Ijrochi — {user?.name}</p>
+                <p className="doc-muted">{t.document.contractor} — {user?.name}</p>
               </div>
               <div>
                 <div className="doc-line" />
-                <p className="doc-muted">Buyurtmachi — {project.client.name}</p>
+                <p className="doc-muted">{t.document.clientParty} — {project.client.name}</p>
               </div>
             </div>
           )}
           <p className="doc-generated">
-            Hujjat {formatDate(new Date())} sanasida FreelanceHub orqali
-            tayyorlandi.
+            {fill(t.document.generated, { date: formatDate(new Date()) })}
           </p>
         </footer>
       </article>
