@@ -6,7 +6,8 @@ import AppShell from "../AppShell";
 import Icon from "../Icon";
 import { PageHeader, Skeleton } from "../components/ui";
 import { useI18n } from "@/lib/i18n/client";
-import { formatDate } from "@/lib/format";
+import { formatAmount, formatDate } from "@/lib/format";
+import { premiumPrice, yearlySavingPercent } from "@/lib/pricing";
 
 type Subscription = {
   plan: "FREE" | "PREMIUM";
@@ -16,7 +17,10 @@ type Subscription = {
   clientCount: number;
   clientLimit: number | null;
   stripeEnabled: boolean;
+  yearlyEnabled: boolean;
 };
+
+type BillingInterval = "monthly" | "yearly";
 
 async function fetchSubscription(): Promise<Subscription | null> {
   try {
@@ -93,6 +97,7 @@ function BillingContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [interval, setInterval] = useState<BillingInterval>("monthly");
 
   useEffect(() => {
     let cancelled = false;
@@ -116,7 +121,11 @@ function BillingContent() {
     setError("");
 
     try {
-      const res = await fetch(`/api/stripe/${endpoint}`, { method: "POST" });
+      const res = await fetch(`/api/stripe/${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(endpoint === "checkout" ? { interval } : {}),
+      });
       const data = await res.json();
 
       if (!res.ok || !data.url) {
@@ -195,18 +204,46 @@ function BillingContent() {
             </div>
           </div>
 
+          {/* To'lov davri — faqat yillik narx sozlangan bo'lsa ko'rinadi */}
+          {subscription.yearlyEnabled && !subscription.isPremium && (
+            <div className="mb-5 flex flex-wrap items-center gap-3">
+              <span className="hint">{t.billing.period}</span>
+              <div className="flex rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-1">
+                {(["monthly", "yearly"] as const).map((value) => (
+                  <button
+                    key={value}
+                    onClick={() => setInterval(value)}
+                    aria-pressed={interval === value}
+                    className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
+                      interval === value
+                        ? "bg-[var(--surface-3)] font-medium text-[var(--ink)]"
+                        : "text-[var(--muted)] hover:text-[var(--ink)]"
+                    }`}
+                  >
+                    {value === "monthly" ? t.billing.monthly : t.billing.yearly}
+                  </button>
+                ))}
+              </div>
+              {yearlySavingPercent > 0 && (
+                <span className="badge badge-success">−{yearlySavingPercent}%</span>
+              )}
+            </div>
+          )}
+
           {/* Tariflar */}
           <div className="grid gap-4 sm:grid-cols-2">
             <PlanCard
               name={t.billing.free}
-              price="0"
+              price={formatAmount(0)}
               features={t.billing.freeFeatures}
               active={!subscription.isPremium}
             />
 
             <PlanCard
               name={t.billing.premium}
-              price="$19"
+              price={formatAmount(
+                interval === "yearly" ? premiumPrice.yearly : premiumPrice.monthly
+              )}
               features={t.billing.premiumFeatures}
               active={subscription.isPremium}
               highlight

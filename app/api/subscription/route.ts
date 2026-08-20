@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/session";
-import { isStripeConfigured } from "@/lib/stripe";
+import { isStripeConfigured, isYearlyAvailable } from "@/lib/stripe";
 import { FREE_CLIENT_LIMIT, getPlanInfo } from "@/lib/subscription";
 import { prisma } from "@/lib/prisma";
 
@@ -21,5 +21,6 @@ export async function GET() {
     clientCount,
     clientLimit: planInfo.isPremium ? null : FREE_CLIENT_LIMIT,
     stripeEnabled: isStripeConfigured(),
+    yearlyEnabled: isYearlyAvailable(),
   });
 }

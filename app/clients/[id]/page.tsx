@@ -48,6 +48,7 @@ type Project = {
   title: string;
   status: ProjectStatus;
   deadline: string | null;
+  createdAt: string;
   payments: Payment[];
 };
 
@@ -145,6 +146,46 @@ export default function ClientDetailPage() {
 
     return { paid, pending };
   }, [projects]);
+
+  // Harakatlar tarixi mavjud sanalardan yig'iladi
+  const activity = useMemo(() => {
+    if (!client) return [];
+
+    return [
+      {
+        key: "client",
+        icon: "users",
+        text: t.clients.activityAdded,
+        at: client.createdAt,
+      },
+      ...proposals.map((item) => ({
+        key: `proposal-${item.id}`,
+        icon: "file",
+        text: fill(t.dashboard.activityProposal, { title: item.title }),
+        at: item.createdAt,
+      })),
+      ...projects.map((item) => ({
+        key: `project-${item.id}`,
+        icon: "folder",
+        text: fill(t.dashboard.activityProject, { title: item.title }),
+        at: item.createdAt,
+      })),
+      ...projects.flatMap((item) =>
+        (item.payments ?? [])
+          .filter((payment) => payment.status === "PAID")
+          .map((payment) => ({
+            key: `payment-${payment.id}`,
+            icon: "payment",
+            text: fill(t.dashboard.activityPayment, {
+              amount: formatAmount(payment.amount),
+            }),
+            at: payment.dueDate,
+          }))
+      ),
+    ]
+      .sort((a, b) => (a.at < b.at ? 1 : -1))
+      .slice(0, 8);
+  }, [client, proposals, projects, t]);
 
   function startEdit() {
     if (!client) return;
@@ -528,6 +569,35 @@ export default function ClientDetailPage() {
                       </li>
                     ))}
                   </ul>
+                )}
+              </section>
+              {/* Harakatlar tarixi */}
+              <section className="card p-6">
+                <h2 className="section-title mb-4">{t.dashboard.activity}</h2>
+
+                {activity.length === 0 ? (
+                  <p className="hint">{t.dashboard.noActivity}</p>
+                ) : (
+                  <ol className="relative space-y-4 pl-6">
+                    <span
+                      className="absolute bottom-2 left-[0.6875rem] top-2 w-px bg-[var(--border)]"
+                      aria-hidden="true"
+                    />
+                    {activity.map((item) => (
+                      <li key={item.key} className="relative">
+                        <span
+                          className="absolute -left-6 top-0.5 flex h-6 w-6 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-2)] text-[var(--muted)]"
+                          aria-hidden="true"
+                        >
+                          <Icon name={item.icon} className="h-3 w-3" />
+                        </span>
+                        <p className="truncate text-sm">{item.text}</p>
+                        <p className="text-xs text-[var(--faint)]">
+                          {formatDate(item.at)}
+                        </p>
+                      </li>
+                    ))}
+                  </ol>
                 )}
               </section>
             </div>

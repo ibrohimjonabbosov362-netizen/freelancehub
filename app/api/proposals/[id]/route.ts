@@ -3,6 +3,82 @@ import { getCurrentUserId } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { PROPOSAL_STATUSES, type ProposalStatus } from "@/lib/statuses";
 
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const userId = await getCurrentUserId();
+
+  if (!userId) {
+    return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  const proposal = await prisma.proposal.findFirst({
+    where: { id, userId },
+    include: {
+      client: { select: { id: true, name: true, email: true, company: true } },
+      // Qabul qilingan taklifdan yaratilgan loyiha
+      project: { select: { id: true, title: true, status: true } },
+    },
+  });
+
+  if (!proposal) {
+    return NextResponse.json({ error: "Taklif topilmadi" }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    id: proposal.id,
+    title: proposal.title,
+    description: proposal.description,
+    amount: proposal.amount.toString(),
+    status: proposal.status,
+    createdAt: proposal.createdAt.toISOString(),
+    updatedAt: proposal.updatedAt.toISOString(),
+    client: proposal.client,
+    project: proposal.project,
+  });
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const userId = await getCurrentUserId();
+
+  if (!userId) {
+    return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  const proposal = await prisma.proposal.findFirst({
+    where: { id, userId },
+    include: { project: { select: { id: true } } },
+  });
+
+  if (!proposal) {
+    return NextResponse.json({ error: "Taklif topilmadi" }, { status: 404 });
+  }
+
+  // Taklifdan loyiha ochilgan bo'lsa, uni o'chirish loyihani ham yo'q qiladi —
+  // buni jimgina qilmaymiz.
+  if (proposal.project) {
+    return NextResponse.json(
+      {
+        error:
+          "Bu taklifdan loyiha yaratilgan. Avval loyihani o'chiring yoki taklifni qoralamaga qaytaring.",
+      },
+      { status: 409 }
+    );
+  }
+
+  await prisma.proposal.delete({ where: { id } });
+
+  return NextResponse.json({ success: true });
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }

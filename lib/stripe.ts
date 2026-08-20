@@ -2,9 +2,26 @@ import Stripe from "stripe";
 
 let client: Stripe | null = null;
 
+export type BillingInterval = "monthly" | "yearly";
+
 // Kalitlar yo'q bo'lsa ilova ishlayveradi, faqat Premium o'chiq bo'ladi.
 export function isStripeConfigured(): boolean {
   return Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRICE_ID);
+}
+
+/**
+ * Yillik narx ixtiyoriy. STRIPE_PRICE_ID_YEARLY berilmasa oylik/yillik
+ * almashtirgichi umuman ko'rsatilmaydi — ishlamaydigan tugma bo'lmasin.
+ */
+export function isYearlyAvailable(): boolean {
+  return isStripeConfigured() && Boolean(process.env.STRIPE_PRICE_ID_YEARLY);
+}
+
+export function getPriceId(interval: BillingInterval): string | null {
+  if (interval === "yearly") {
+    return process.env.STRIPE_PRICE_ID_YEARLY || null;
+  }
+  return process.env.STRIPE_PRICE_ID || null;
 }
 
 export function getStripe(): Stripe {

@@ -34,6 +34,10 @@ Ilova: http://localhost:3000
 | `RESEND_API_KEY` | yo'q | Parolni tiklash xatlari uchun ([resend.com](https://resend.com)) |
 | `MAIL_FROM` | yo'q | Jo'natuvchi, masalan `FreelanceHub <no-reply@domen.uz>` |
 | `NEXT_PUBLIC_GA_ID` | yo'q | Google Analytics (`G-...`); bo'lmasa skript yuklanmaydi |
+| `STRIPE_PRICE_ID_YEARLY` | yo'q | Yillik narx; berilmasa oylik/yillik almashtirgichi ko'rsatilmaydi |
+| `NEXT_PUBLIC_CURRENCY` | yo'q | `UZS` (standart), `USD` yoki `EUR` — butun ilova shu valyutada |
+| `NEXT_PUBLIC_PRICE_MONTHLY` / `_YEARLY` | yo'q | Tariflar sahifasidagi narx (Stripe'dagi bilan bir xil bo'lsin) |
+| `NEXT_PUBLIC_SOCIAL_*` | yo'q | `INSTAGRAM`, `LINKEDIN`, `X` — berilmagani footer'da ko'rinmaydi |
 
 > ⚠️ `.env` da bir o'zgaruvchini ikki marta yozmang — **oxirgisi kuchga kiradi** va yuqoridagisini jimgina bekor qiladi.
 
@@ -87,8 +91,9 @@ app/
     AuthLayout.tsx        Kirish/ro'yxat sahifalari uchun ikki ustunli tuzilma
     GoogleButton.tsx      Google orqali kirish (sozlanmagan bo'lsa ko'rinmaydi)
     SiteHeader · SiteFooter · DashboardPreview · Faq
-  dashboard/  clients/  proposals/  projects/  contracts/
+  dashboard/  clients/  proposals/[id]/  projects/[id]/  contracts/
   payments/  billing/  settings/  pricing/
+  about/  help/  docs/  privacy/  terms/
 lib/
   prisma.ts       Prisma klienti (dev'da qayta ishlatiladi)
   auth.ts         NextAuth sozlamalari
@@ -96,7 +101,8 @@ lib/
   subscription.ts Tarif tekshiruvi + bepul limit
   payments.ts     Muddati o'tgan to'lovlarni belgilash
   statuses.ts     Holatlar ro'yxati va nishon uslublari
-  format.ts       Pul va sana formati
+  format.ts       Pul va sana formati (valyuta NEXT_PUBLIC_CURRENCY dan)
+  pricing.ts      Premium narxi — landing, tariflar va Tarif sahifasi uchun yagona manba
   i18n/           uz/en lug'at, server va klient tomoni
 proxy.ts          Kirmagan foydalanuvchini /login ga yo'naltiradi
 ```

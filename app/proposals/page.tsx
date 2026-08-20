@@ -181,6 +181,7 @@ export default function ProposalsPage() {
       total: proposals.length,
       sent: count("SENT"),
       accepted: count("ACCEPTED"),
+      rejected: count("REJECTED"),
       value: proposals.reduce((sum, p) => sum + Number(p.amount), 0),
     };
   }, [proposals]);
@@ -231,7 +232,7 @@ export default function ProposalsPage() {
             </button>
           </PageHeader>
 
-          <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
             <StatCard label={t.proposals.total} value={stats.total} />
             <StatCard
               label={t.status.SENT}
@@ -242,6 +243,11 @@ export default function ProposalsPage() {
               label={t.status.ACCEPTED}
               value={stats.accepted}
               tone="success"
+            />
+            <StatCard
+              label={t.status.REJECTED}
+              value={stats.rejected}
+              tone={stats.rejected > 0 ? "danger" : "neutral"}
             />
             <StatCard
               label={t.proposals.totalValue}
@@ -324,7 +330,14 @@ export default function ProposalsPage() {
                     <tbody>
                       {visible.map((proposal) => (
                         <tr key={proposal.id}>
-                          <td className="font-medium">{proposal.title}</td>
+                          <td>
+                            <Link
+                              href={`/proposals/${proposal.id}`}
+                              className="link font-medium"
+                            >
+                              {proposal.title}
+                            </Link>
+                          </td>
                           <td className="text-[var(--muted)]">
                             {proposal.client.name}
                           </td>
@@ -351,9 +364,12 @@ export default function ProposalsPage() {
                     <li key={proposal.id} className="p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">
+                          <Link
+                            href={`/proposals/${proposal.id}`}
+                            className="link block truncate text-sm font-medium"
+                          >
                             {proposal.title}
-                          </p>
+                          </Link>
                           <p className="truncate text-xs text-[var(--faint)]">
                             {proposal.client.name}
                           </p>

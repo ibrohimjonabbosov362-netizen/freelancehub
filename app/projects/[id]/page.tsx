@@ -7,6 +7,7 @@ import AppShell from "../../AppShell";
 import Icon from "../../Icon";
 import { formatAmount, formatDate } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/client";
+import { fill } from "@/lib/i18n/dictionaries";
 import { contractTemplates, getTemplate } from "@/lib/contractTemplates";
 import {
   PAYMENT_STATUSES,
@@ -32,6 +33,7 @@ type Contract = {
   status: ContractStatus;
   content: string;
   signedAt: string | null;
+  createdAt: string;
 } | null;
 
 type ProjectDetail = {
@@ -266,6 +268,56 @@ export default function ProjectDetailPage() {
     { label: t.projectDetail.stepPayment, done: totalPaid > 0 },
   ];
 
+  // Harakatlar tarixi mavjud sanalardan yig'iladi — alohida jadval saqlanmaydi
+  const activity = [
+    {
+      key: "created",
+      icon: "folder",
+      text: t.projectDetail.activityCreated,
+      at: project.createdAt,
+    },
+    ...(project.proposal
+      ? [
+          {
+            key: "proposal",
+            icon: "file",
+            text: t.projectDetail.activityProposalAccepted,
+            at: project.createdAt,
+          },
+        ]
+      : []),
+    ...(project.contract
+      ? [
+          {
+            key: "contract",
+            icon: "contract",
+            text: t.projectDetail.activityContractDrafted,
+            at: project.contract.createdAt,
+          },
+        ]
+      : []),
+    ...(project.contract?.signedAt
+      ? [
+          {
+            key: "signed",
+            icon: "check",
+            text: t.projectDetail.activityContractSigned,
+            at: project.contract.signedAt,
+          },
+        ]
+      : []),
+    ...project.payments
+      .filter((payment) => payment.paidAt)
+      .map((payment) => ({
+        key: `payment-${payment.id}`,
+        icon: "payment",
+        text: fill(t.projectDetail.activityPaymentPaid, {
+          amount: formatAmount(payment.amount),
+        }),
+        at: payment.paidAt!,
+      })),
+  ].sort((a, b) => (a.at < b.at ? 1 : -1));
+
   return (
     <AppShell>
       <div className="px-5 py-8 sm:px-8 sm:py-10">
@@ -382,6 +434,61 @@ export default function ProjectDetailPage() {
                   >
                     {step.label}
                   </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          {/* Bog'langan taklif */}
+          <div className="card mb-6 p-6">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="section-title">{t.projectDetail.proposal}</h2>
+              {project.proposal && (
+                <Link
+                  href={`/proposals/${project.proposal.id}`}
+                  className="btn btn-ghost btn-sm"
+                >
+                  {t.common.seeDetails}
+                </Link>
+              )}
+            </div>
+
+            {project.proposal ? (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <Link
+                  href={`/proposals/${project.proposal.id}`}
+                  className="link min-w-0 truncate text-sm font-medium"
+                >
+                  {project.proposal.title}
+                </Link>
+                <span className="text-sm tabular-nums">
+                  {formatAmount(project.proposal.amount)}
+                </span>
+              </div>
+            ) : (
+              <p className="hint">{t.projectDetail.noProposal}</p>
+            )}
+          </div>
+
+          {/* Harakatlar tarixi */}
+          <div className="card mb-6 p-6">
+            <h2 className="section-title mb-4">{t.projectDetail.activity}</h2>
+
+            <ol className="relative space-y-4 pl-6">
+              <span
+                className="absolute bottom-2 left-[0.6875rem] top-2 w-px bg-[var(--border)]"
+                aria-hidden="true"
+              />
+              {activity.map((item) => (
+                <li key={item.key} className="relative">
+                  <span
+                    className="absolute -left-6 top-0.5 flex h-6 w-6 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-2)] text-[var(--muted)]"
+                    aria-hidden="true"
+                  >
+                    <Icon name={item.icon} className="h-3 w-3" />
+                  </span>
+                  <p className="text-sm">{item.text}</p>
+                  <p className="text-xs text-[var(--faint)]">{formatDate(item.at)}</p>
                 </li>
               ))}
             </ol>

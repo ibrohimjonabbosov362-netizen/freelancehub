@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/session";
-import { getAppUrl, getStripe, isStripeConfigured } from "@/lib/stripe";
+import {
+  getAppUrl,
+  getPriceId,
+  getStripe,
+  isStripeConfigured,
+  type BillingInterval,
+} from "@/lib/stripe";
 import { getPlanInfo } from "@/lib/subscription";
 import { prisma } from "@/lib/prisma";
 
-export async function POST() {
+export async function POST(request: Request) {
   const userId = await getCurrentUserId();
 
   if (!userId) {
@@ -27,6 +33,19 @@ export async function POST() {
     return NextResponse.json(
       { error: "Foydalanuvchi topilmadi" },
       { status: 404 }
+    );
+  }
+
+  // Tanlangan davr: yillik narx sozlanmagan bo'lsa oylikka qaytamiz
+  const body = await request.json().catch(() => ({}));
+  const requested: BillingInterval =
+    body?.interval === "yearly" ? "yearly" : "monthly";
+  const priceId = getPriceId(requested) ?? getPriceId("monthly");
+
+  if (!priceId) {
+    return NextResponse.json(
+      { error: "To'lov tizimi hozircha sozlanmagan" },
+      { status: 503 }
     );
   }
 
@@ -64,7 +83,7 @@ export async function POST() {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
-      line_items: [{ price: process.env.STRIPE_PRICE_ID!, quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${appUrl}/billing?success=1`,
       cancel_url: `${appUrl}/pricing?canceled=1`,
       // Webhook kechikkan holatda ham to'lovni foydalanuvchiga bog'lay olishimiz uchun.

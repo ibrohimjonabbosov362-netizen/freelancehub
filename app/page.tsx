@@ -1,11 +1,10 @@
-"use client";
-
 import Link from "next/link";
 import SiteHeader from "./components/SiteHeader";
 import SiteFooter from "./components/SiteFooter";
 import DashboardPreview from "./components/DashboardPreview";
 import Faq from "./components/Faq";
-import { useI18n } from "@/lib/i18n/client";
+import { getDictionary, getLocale } from "@/lib/i18n/server";
+import { isStripeConfigured } from "@/lib/stripe";
 
 const featureIcons = [
   "M16 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M9.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z",
@@ -18,15 +17,92 @@ const featureIcons = [
 
 function Icon({ d, className = "h-5 w-5" }: { d: string; className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"
-         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
       <path d={d} />
     </svg>
   );
 }
 
-export default function HomePage() {
-  const { locale, t } = useI18n();
+/** "Qanday ishlaydi" bo'limidagi kichik, haqiqiy UI'ni takrorlaydigan ko'rinishlar */
+function StepPreviewClients({ labels }: { labels: string[] }) {
+  return (
+    <ul className="space-y-1.5" aria-hidden="true">
+      {labels.map((name, i) => (
+        <li
+          key={name}
+          className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1.5"
+        >
+          <span
+            className="flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-semibold"
+            style={{
+              background: ["rgba(139,92,246,.16)", "rgba(52,211,153,.14)", "rgba(96,165,250,.14)"][i],
+              color: ["#c4b5fd", "#6ee7b7", "#93c5fd"][i],
+            }}
+          >
+            {name.slice(0, 1)}
+          </span>
+          <span className="truncate text-[11px]">{name}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function StepPreviewBoard({ columns }: { columns: { label: string; count: number }[] }) {
+  return (
+    <div className="grid grid-cols-3 gap-1.5" aria-hidden="true">
+      {columns.map((column, i) => (
+        <div
+          key={column.label}
+          className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-2"
+        >
+          <p className="mb-1.5 truncate text-[9px]" style={{ color: "var(--faint)" }}>
+            {column.label}
+          </p>
+          <div className="space-y-1">
+            {Array.from({ length: column.count }).map((_, row) => (
+              <div
+                key={row}
+                className="h-3 rounded"
+                style={{
+                  background: i === 1 ? "rgba(139,92,246,.25)" : "var(--surface-3)",
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StepPreviewPayments({ rows }: { rows: { amount: string; cls: string }[] }) {
+  return (
+    <ul className="space-y-1.5" aria-hidden="true">
+      {rows.map((row) => (
+        <li
+          key={row.amount}
+          className="flex items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1.5"
+        >
+          <span className="text-[11px] tabular-nums">{row.amount}</span>
+          <span className={`badge ${row.cls} !px-1.5 !py-0.5 !text-[9px]`}>●</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export default async function HomePage() {
+  const [t, locale] = await Promise.all([getDictionary(), getLocale()]);
   const en = locale === "en";
 
   const features = en
@@ -47,18 +123,53 @@ export default function HomePage() {
         { title: "Umumiy manzara", text: "Biznesingiz holatini bir qarashda ko'ring." },
       ];
 
-  const workflow = en
-    ? ["Client", "Proposal", "Project", "Contract", "Payment"]
-    : ["Mijoz", "Taklif", "Loyiha", "Shartnoma", "To'lov"];
+  const workflow = [
+    t.projectDetail.stepClient,
+    t.projectDetail.stepProposal,
+    t.projectDetail.stepProject,
+    t.projectDetail.stepContract,
+    t.projectDetail.stepPayment,
+  ];
 
   const messy = en
     ? ["WhatsApp", "Excel", "Google Docs", "Scattered files", "Payment notes"]
     : ["WhatsApp", "Excel", "Google Docs", "Tarqoq fayllar", "To'lov qaydlari"];
 
   const steps = [
-    { n: "01", title: t.landing.step1, text: t.landing.step1Text },
-    { n: "02", title: t.landing.step2, text: t.landing.step2Text },
-    { n: "03", title: t.landing.step3, text: t.landing.step3Text },
+    {
+      n: "01",
+      title: t.landing.step1,
+      text: t.landing.step1Text,
+      preview: <StepPreviewClients labels={["Acme Corp", "StartupX", "Shopify"]} />,
+    },
+    {
+      n: "02",
+      title: t.landing.step2,
+      text: t.landing.step2Text,
+      preview: (
+        <StepPreviewBoard
+          columns={[
+            { label: t.status.TODO, count: 2 },
+            { label: t.status.IN_PROGRESS, count: 3 },
+            { label: t.status.COMPLETED, count: 1 },
+          ]}
+        />
+      ),
+    },
+    {
+      n: "03",
+      title: t.landing.step3,
+      text: t.landing.step3Text,
+      preview: (
+        <StepPreviewPayments
+          rows={[
+            { amount: en ? "$1,200" : "15,2 mln", cls: "badge-success" },
+            { amount: en ? "$850" : "10,8 mln", cls: "badge-warning" },
+            { amount: en ? "$400" : "5,1 mln", cls: "badge-danger" },
+          ]}
+        />
+      ),
+    },
   ];
 
   return (
@@ -77,7 +188,10 @@ export default function HomePage() {
               <span className="gradient-text">{t.landing.heroTitleAccent}</span>
             </h1>
 
-            <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed" style={{ color: "var(--muted)" }}>
+            <p
+              className="mx-auto mt-6 max-w-xl text-lg leading-relaxed"
+              style={{ color: "var(--muted)" }}
+            >
               {t.landing.heroSubtitle}
             </p>
 
@@ -90,8 +204,10 @@ export default function HomePage() {
               </Link>
             </div>
 
-            <ul className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm"
-                style={{ color: "var(--faint)" }}>
+            <ul
+              className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm"
+              style={{ color: "var(--faint)" }}
+            >
               {[t.landing.badgeNoCard, t.landing.badgeFree, t.landing.badgeSetup].map((b) => (
                 <li key={b} className="flex items-center gap-1.5">
                   <Icon d="m4 12 5 5L20 6" className="h-3.5 w-3.5 text-[var(--success)]" />
@@ -102,8 +218,13 @@ export default function HomePage() {
           </div>
 
           <div className="relative mt-14">
-            <div className="pointer-events-none absolute -inset-x-10 -top-10 h-40 opacity-60"
-                 style={{ background: "radial-gradient(50% 60% at 50% 0%, var(--accent-glow), transparent 70%)" }} />
+            <div
+              className="pointer-events-none absolute -inset-x-10 -top-10 h-40 opacity-60"
+              style={{
+                background:
+                  "radial-gradient(50% 60% at 50% 0%, var(--accent-glow), transparent 70%)",
+              }}
+            />
             <div className="relative">
               <DashboardPreview />
             </div>
@@ -113,7 +234,9 @@ export default function HomePage() {
         {/* Features */}
         <section id="features" className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="font-display text-3xl font-semibold tracking-tight">{t.landing.featuresTitle}</h2>
+            <h2 className="font-display text-3xl font-semibold tracking-tight">
+              {t.landing.featuresTitle}
+            </h2>
             <p className="hint mt-3">{t.landing.featuresSubtitle}</p>
           </div>
 
@@ -124,7 +247,9 @@ export default function HomePage() {
                   <Icon d={featureIcons[i]} />
                 </div>
                 <h3 className="mb-1.5 font-medium">{feature.title}</h3>
-                <p className="text-sm leading-relaxed" style={{ color: "var(--muted)" }}>{feature.text}</p>
+                <p className="text-sm leading-relaxed" style={{ color: "var(--muted)" }}>
+                  {feature.text}
+                </p>
               </div>
             ))}
           </div>
@@ -133,7 +258,9 @@ export default function HomePage() {
         {/* Workflow */}
         <section className="border-y border-[var(--border)] bg-[var(--surface)]/40 px-5 py-20 sm:px-8">
           <div className="mx-auto max-w-5xl text-center">
-            <h2 className="font-display text-3xl font-semibold tracking-tight">{t.landing.workflowTitle}</h2>
+            <h2 className="font-display text-3xl font-semibold tracking-tight">
+              {t.landing.workflowTitle}
+            </h2>
             <p className="hint mx-auto mt-3 max-w-lg">{t.landing.workflowSubtitle}</p>
 
             <ol className="mt-12 flex flex-col items-stretch gap-3 lg:flex-row lg:items-center">
@@ -146,8 +273,13 @@ export default function HomePage() {
                     <span className="text-sm font-medium">{step}</span>
                   </div>
                   {i < workflow.length - 1 && (
-                    <span aria-hidden="true" className="shrink-0 rotate-90 text-lg lg:rotate-0"
-                          style={{ color: "var(--faint)" }}>→</span>
+                    <span
+                      aria-hidden="true"
+                      className="shrink-0 rotate-90 text-lg lg:rotate-0"
+                      style={{ color: "var(--faint)" }}
+                    >
+                      →
+                    </span>
                   )}
                 </li>
               ))}
@@ -168,8 +300,11 @@ export default function HomePage() {
               </p>
               <ul className="space-y-2.5">
                 {messy.map((tool) => (
-                  <li key={tool} className="flex items-center gap-2.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm"
-                      style={{ color: "var(--muted)" }}>
+                  <li
+                    key={tool}
+                    className="flex items-center gap-2.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm"
+                    style={{ color: "var(--muted)" }}
+                  >
                     <Icon d="M6 6l12 12M18 6 6 18" className="h-3.5 w-3.5 text-[var(--danger)]" />
                     {tool}
                   </li>
@@ -177,13 +312,22 @@ export default function HomePage() {
               </ul>
             </div>
 
-            <span aria-hidden="true" className="mx-auto rotate-90 text-2xl lg:rotate-0" style={{ color: "var(--faint)" }}>→</span>
+            <span
+              aria-hidden="true"
+              className="mx-auto rotate-90 text-2xl lg:rotate-0"
+              style={{ color: "var(--faint)" }}
+            >
+              →
+            </span>
 
             <div className="card p-6" style={{ borderColor: "var(--accent-1)" }}>
               <p className="mb-4 text-sm font-medium">{t.landing.problemAfter}</p>
               <ul className="space-y-2.5">
                 {workflow.map((step) => (
-                  <li key={step} className="flex items-center gap-2.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm">
+                  <li
+                    key={step}
+                    className="flex items-center gap-2.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm"
+                  >
                     <Icon d="m4 12 5 5L20 6" className="h-3.5 w-3.5 text-[var(--success)]" />
                     {step}
                   </li>
@@ -194,7 +338,10 @@ export default function HomePage() {
         </section>
 
         {/* How it works */}
-        <section id="how" className="border-y border-[var(--border)] bg-[var(--surface)]/40 px-5 py-20 sm:px-8">
+        <section
+          id="how"
+          className="border-y border-[var(--border)] bg-[var(--surface)]/40 px-5 py-20 sm:px-8"
+        >
           <div className="mx-auto max-w-5xl">
             <h2 className="font-display mb-12 text-center text-3xl font-semibold tracking-tight">
               {t.landing.howTitle}
@@ -202,23 +349,33 @@ export default function HomePage() {
 
             <div className="grid gap-4 sm:grid-cols-3">
               {steps.map((step) => (
-                <div key={step.n} className="card p-6">
-                  <span className="font-display gradient-text text-2xl font-semibold">{step.n}</span>
+                <div key={step.n} className="card flex flex-col p-6">
+                  <span className="font-display gradient-text text-2xl font-semibold">
+                    {step.n}
+                  </span>
                   <h3 className="mt-3 font-medium">{step.title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed" style={{ color: "var(--muted)" }}>{step.text}</p>
+                  <p className="mt-1.5 text-sm leading-relaxed" style={{ color: "var(--muted)" }}>
+                    {step.text}
+                  </p>
+                  <div className="mt-5">{step.preview}</div>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        <Faq />
+        <Faq stripeReady={isStripeConfigured()} />
 
         {/* Final CTA */}
         <section className="px-5 pb-24 sm:px-8">
           <div className="card relative mx-auto max-w-4xl overflow-hidden p-10 text-center sm:p-14">
-            <div className="pointer-events-none absolute inset-0"
-                 style={{ background: "radial-gradient(60% 100% at 50% 0%, var(--accent-glow), transparent 70%)" }} />
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  "radial-gradient(60% 100% at 50% 0%, var(--accent-glow), transparent 70%)",
+              }}
+            />
             <div className="relative">
               <h2 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
                 {t.landing.finalTitle}

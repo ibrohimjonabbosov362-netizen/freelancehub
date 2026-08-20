@@ -5,7 +5,17 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://freelancehub-psi.verc
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
 
-  return ["", "/pricing", "/login", "/register", "/privacy", "/terms"].map((path) => ({
+  return [
+    "",
+    "/pricing",
+    "/about",
+    "/help",
+    "/docs",
+    "/login",
+    "/register",
+    "/privacy",
+    "/terms",
+  ].map((path) => ({
     url: `${appUrl}${path}`,
     lastModified: now,
     changeFrequency: path === "" ? "weekly" : "monthly",
