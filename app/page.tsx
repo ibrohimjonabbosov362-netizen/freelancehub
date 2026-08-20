@@ -225,8 +225,9 @@ export default async function HomePage() {
           </div>
 
           <div className="relative mt-14">
+            {/* Bezak yorug'ligi: manfiy inset gorizontal skroll hosil qilardi */}
             <div
-              className="pointer-events-none absolute -inset-x-10 -top-10 h-40 opacity-60"
+              className="pointer-events-none absolute inset-x-0 -top-10 h-40 opacity-60"
               style={{
                 background:
                   "radial-gradient(50% 60% at 50% 0%, var(--accent-glow), transparent 70%)",

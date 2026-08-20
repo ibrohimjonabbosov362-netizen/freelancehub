@@ -131,7 +131,6 @@ export default function DashboardView({ data }: { data: DashboardData }) {
               {greeting || t.dashboard.welcome}
               {data.name ? `, ${data.name}` : ""} <span aria-hidden="true">👋</span>
             </h1>
-            <p className="hint mt-1">{t.dashboard.revenueSub}</p>
           </div>
 
           <span
@@ -142,7 +141,7 @@ export default function DashboardView({ data }: { data: DashboardData }) {
         </div>
 
         {/* Asosiy ko'rsatkichlar */}
-        <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard
             label={t.dashboard.totalClients}
             value={data.clientsCount}
