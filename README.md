@@ -78,6 +78,28 @@ Kerakli hodisalar:
 
 **5. Sinash** — test kartasi `4242 4242 4242 4242`, istalgan kelajak sana va CVC.
 
+### Webhook'ni Stripe hisobisiz tekshirish
+
+Obunani yoqish/o'chirish — billing'dagi eng xavfli qism. Uni **haqiqiy Stripe
+hisobisiz ham** sinash mumkin: skript Stripe SDK'ning imzo generatoridan
+foydalanib, xuddi Stripe yuborgandek imzolangan hodisa jo'natadi.
+
+```bash
+npm run start   # yoki npm run dev — ilova ishlab tursin
+
+STRIPE_SECRET_KEY=sk_test_fake \
+STRIPE_WEBHOOK_SECRET=whsec_fake \
+QA_CONFIRM=1 node scripts/test-stripe-webhook.mjs
+```
+
+Skript quyidagilarni tekshiradi: obuna hodisasi kelganda tarif PREMIUM bo'lishi,
+mijoz chegarasi olib tashlanishi, PDF eksport ochilishi; bekor qilinganda
+hammasi FREE holatiga qaytishi; **soxta imzoli so'rov rad etilishi**. Oxirida
+yaratgan test hisobini o'zi o'chiradi.
+
+> Haqiqiy kalitlaringiz bo'lsa, o'sha kalitlar bilan ishga tushiring — sinov
+> baribir Stripe serveriga chiqmaydi, faqat sizning webhook'ingizni tekshiradi.
+
 ---
 
 ## Loyiha tuzilishi
