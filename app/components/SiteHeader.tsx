@@ -1,13 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import LocaleSwitcher from "../LocaleSwitcher";
+import CtaLink from "./motion/CtaLink";
 import { useI18n } from "@/lib/i18n/client";
 
 export default function SiteHeader() {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  // 20px'dan ko'proq scroll qilinganda fon shaffofdan qorong'i sirtga o'tadi
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const links = [
     { href: "/#features", label: t.nav.features },
@@ -17,7 +28,18 @@ export default function SiteHeader() {
   ];
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--bg)]/85 backdrop-blur-md">
+    <motion.header
+      className="sticky top-0 z-40 border-b border-[var(--border)] backdrop-blur-md"
+      animate={{
+        // Dizayn to'q fon ustida qurilgan — "oq"ning muqobili sifatida
+        // to'q elevated sirt (--surface) ishlatildi, effekt xuddi shu: shaffofdan solidga.
+        backgroundColor: scrolled ? "rgba(15,16,19,0.9)" : "rgba(15,16,19,0)",
+        boxShadow: scrolled
+          ? "0 4px 24px -8px rgba(0,0,0,0.35)"
+          : "0 0 0 0 rgba(0,0,0,0)",
+      }}
+      transition={{ type: "tween", duration: 0.25, ease: "easeOut" }}
+    >
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3.5 sm:px-8">
         <Link href="/" className="brand text-lg font-semibold tracking-tight">
           Freelance<span className="gradient-text">Hub</span>
@@ -38,9 +60,9 @@ export default function SiteHeader() {
           <Link href="/login" className="hidden text-sm link-muted sm:block">
             {t.nav.login}
           </Link>
-          <Link href="/register" className="btn btn-accent btn-sm">
+          <CtaLink href="/register" className="btn btn-accent btn-sm">
             {t.landing.ctaPrimary}
-          </Link>
+          </CtaLink>
 
           <button
             onClick={() => setOpen(!open)}
@@ -71,6 +93,6 @@ export default function SiteHeader() {
           </nav>
         </div>
       )}
-    </header>
+    </motion.header>
   );
 }

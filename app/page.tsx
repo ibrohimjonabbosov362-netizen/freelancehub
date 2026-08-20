@@ -1,8 +1,10 @@
-import Link from "next/link";
 import SiteHeader from "./components/SiteHeader";
 import SiteFooter from "./components/SiteFooter";
 import DashboardPreview from "./components/DashboardPreview";
 import Faq from "./components/Faq";
+import { HeroRevealGroup, HeroRevealItem } from "./components/motion/HeroReveal";
+import { ScrollRevealGroup, ScrollRevealItem } from "./components/motion/ScrollReveal";
+import CtaLink from "./components/motion/CtaLink";
 import { getDictionary, getLocale } from "@/lib/i18n/server";
 import { isStripeConfigured } from "@/lib/stripe";
 import { CURRENCY_CODE, formatAmountShort } from "@/lib/format";
@@ -187,29 +189,39 @@ export default async function HomePage() {
         {/* Hero */}
         <section className="mx-auto max-w-6xl px-5 pb-16 pt-16 sm:px-8 sm:pt-24">
           <div className="mx-auto max-w-3xl text-center">
-            <span className="badge badge-neutral mb-6">{t.landing.builtFor}</span>
+            <HeroRevealGroup>
+              <HeroRevealItem>
+                <span className="badge badge-neutral mb-6">{t.landing.builtFor}</span>
+              </HeroRevealItem>
 
-            <h1 className="font-display text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">
-              {t.landing.heroTitle}
-              <br />
-              <span className="gradient-text">{t.landing.heroTitleAccent}</span>
-            </h1>
+              <HeroRevealItem>
+                <h1 className="font-display text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">
+                  {t.landing.heroTitle}
+                  <br />
+                  <span className="gradient-text">{t.landing.heroTitleAccent}</span>
+                </h1>
+              </HeroRevealItem>
 
-            <p
-              className="mx-auto mt-6 max-w-xl text-lg leading-relaxed"
-              style={{ color: "var(--muted)" }}
-            >
-              {t.landing.heroSubtitle}
-            </p>
+              <HeroRevealItem>
+                <p
+                  className="mx-auto mt-6 max-w-xl text-lg leading-relaxed"
+                  style={{ color: "var(--muted)" }}
+                >
+                  {t.landing.heroSubtitle}
+                </p>
+              </HeroRevealItem>
 
-            <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-              <Link href="/register" className="btn btn-accent px-6 py-3">
-                {t.landing.ctaPrimary} <span aria-hidden="true">→</span>
-              </Link>
-              <Link href="#how" className="btn btn-ghost px-6 py-3">
-                {t.landing.ctaSecondary}
-              </Link>
-            </div>
+              <HeroRevealItem>
+                <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+                  <CtaLink href="/register" className="btn btn-accent px-6 py-3">
+                    {t.landing.ctaPrimary} <span aria-hidden="true">→</span>
+                  </CtaLink>
+                  <CtaLink href="#how" className="btn btn-ghost px-6 py-3">
+                    {t.landing.ctaSecondary}
+                  </CtaLink>
+                </div>
+              </HeroRevealItem>
+            </HeroRevealGroup>
 
             <ul
               className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm"
@@ -248,9 +260,9 @@ export default async function HomePage() {
             <p className="hint mt-3">{t.landing.featuresSubtitle}</p>
           </div>
 
-          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ScrollRevealGroup className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((feature, i) => (
-              <div key={feature.title} className="card card-hover p-6">
+              <ScrollRevealItem key={feature.title} className="card p-6">
                 <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-2)] text-[var(--accent-soft)]">
                   <Icon d={featureIcons[i]} />
                 </div>
@@ -258,9 +270,9 @@ export default async function HomePage() {
                 <p className="text-sm leading-relaxed" style={{ color: "var(--muted)" }}>
                   {feature.text}
                 </p>
-              </div>
+              </ScrollRevealItem>
             ))}
-          </div>
+          </ScrollRevealGroup>
         </section>
 
         {/* Workflow */}
@@ -389,9 +401,9 @@ export default async function HomePage() {
                 {t.landing.finalTitle}
               </h2>
               <p className="hint mx-auto mt-4 max-w-md">{t.landing.finalSubtitle}</p>
-              <Link href="/register" className="btn btn-accent mt-8 px-6 py-3">
+              <CtaLink href="/register" className="btn btn-accent mt-8 px-6 py-3">
                 {t.landing.ctaPrimary} <span aria-hidden="true">→</span>
-              </Link>
+              </CtaLink>
             </div>
           </div>
         </section>
