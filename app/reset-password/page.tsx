@@ -3,8 +3,11 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import AuthLayout from "../components/AuthLayout";
+import { useI18n } from "@/lib/i18n/client";
 
 function ResetForm() {
+  const { t } = useI18n();
   const router = useRouter();
   const token = useSearchParams().get("token") ?? "";
 
@@ -19,7 +22,7 @@ function ResetForm() {
     setError("");
 
     if (password !== repeat) {
-      setError("Parollar mos kelmadi");
+      setError(t.auth.passwordsDiffer);
       return;
     }
 
@@ -35,14 +38,14 @@ function ResetForm() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Xatolik yuz berdi");
+        setError(data.error || t.common.genericError);
         return;
       }
 
       setDone(true);
       setTimeout(() => router.push("/login"), 2500);
     } catch {
-      setError("Server bilan bog'lanishda xatolik");
+      setError(t.common.serverError);
     } finally {
       setLoading(false);
     }
@@ -51,22 +54,16 @@ function ResetForm() {
   if (!token) {
     return (
       <>
-        <div className="alert alert-danger">
-          Havola to&apos;liq emas. Tiklash xatidagi havolani to&apos;liq oching.
-        </div>
+        <div className="alert alert-danger">{t.auth.invalidLink}</div>
         <Link href="/forgot-password" className="btn btn-ghost mt-5 w-full">
-          Qaytadan so&apos;rash
+          {t.auth.forgotTitle}
         </Link>
       </>
     );
   }
 
   if (done) {
-    return (
-      <div className="alert alert-success">
-        Parol o&apos;zgartirildi. Kirish sahifasiga yo&apos;naltirilyapsiz...
-      </div>
-    );
+    return <div className="alert alert-success">{t.auth.resetDone}</div>;
   }
 
   return (
@@ -74,7 +71,9 @@ function ResetForm() {
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div>
-        <label htmlFor="rp-new" className="label">Yangi parol</label>
+        <label htmlFor="rp-new" className="label">
+          {t.auth.newPassword}
+        </label>
         <input
           id="rp-new"
           type="password"
@@ -84,12 +83,14 @@ function ResetForm() {
           required
           minLength={6}
           className="input"
-          placeholder="Kamida 6 belgi"
+          placeholder={t.auth.passwordHint}
         />
       </div>
 
       <div>
-        <label htmlFor="rp-rep" className="label">Takrorlang</label>
+        <label htmlFor="rp-rep" className="label">
+          {t.auth.repeatPassword}
+        </label>
         <input
           id="rp-rep"
           type="password"
@@ -103,27 +104,35 @@ function ResetForm() {
       </div>
 
       <button type="submit" disabled={loading} className="btn btn-accent w-full">
-        {loading ? "Saqlanmoqda..." : "Parolni o'rnatish"}
+        {loading ? t.auth.saving : t.auth.savePassword}
       </button>
     </form>
   );
 }
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
+  const { t } = useI18n();
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12">
-      <Link href="/" className="brand mb-8 text-xl font-semibold">
-        Freelance<span className="gradient-text">Hub</span>
-      </Link>
-
-      <div className="card w-full max-w-md p-8">
-        <h1 className="mb-1 text-xl font-semibold">Yangi parol</h1>
-        <p className="hint mb-6">Hisobingiz uchun yangi parol o&apos;rnating.</p>
-
-        <Suspense fallback={<p className="hint">Yuklanmoqda...</p>}>
-          <ResetForm />
-        </Suspense>
-      </div>
-    </div>
+    <AuthLayout
+      title={t.auth.resetTitle}
+      subtitle={t.auth.resetSubtitle}
+      footer={
+        <>
+          {t.auth.remembered}{" "}
+          <Link href="/login" className="link">
+            {t.auth.signIn}
+          </Link>
+        </>
+      }
+    >
+      <Suspense fallback={<p className="hint">{t.common.loading}</p>}>
+        <ResetForm />
+      </Suspense>
+    </AuthLayout>
   );
+}
+
+export default function ResetPasswordPage() {
+  return <ResetPasswordContent />;
 }

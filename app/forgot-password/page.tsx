@@ -2,8 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import AuthLayout from "../components/AuthLayout";
+import { useI18n } from "@/lib/i18n/client";
 
 export default function ForgotPasswordPage() {
+  const { t } = useI18n();
+
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
@@ -24,69 +28,63 @@ export default function ForgotPasswordPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Xatolik yuz berdi");
+        setError(data.error || t.common.genericError);
         return;
       }
 
       setSent(true);
     } catch {
-      setError("Server bilan bog'lanishda xatolik");
+      setError(t.common.serverError);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12">
-      <Link href="/" className="brand mb-8 text-xl font-semibold">
-        Freelance<span className="gradient-text">Hub</span>
-      </Link>
+    <AuthLayout
+      title={t.auth.forgotTitle}
+      subtitle={t.auth.forgotSubtitle}
+      footer={
+        <>
+          {t.auth.remembered}{" "}
+          <Link href="/login" className="link">
+            {t.auth.signIn}
+          </Link>
+        </>
+      }
+    >
+      {sent ? (
+        <>
+          <div className="alert alert-success">{t.auth.forgotSent}</div>
+          <Link href="/login" className="btn btn-ghost mt-5 w-full">
+            {t.auth.backToLogin}
+          </Link>
+        </>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && <div className="alert alert-danger">{error}</div>}
 
-      <div className="card w-full max-w-md p-8">
-        <h1 className="mb-1 text-xl font-semibold">Parolni tiklash</h1>
-        <p className="hint mb-6">
-          Email manzilingizni kiriting — tiklash havolasini yuboramiz.
-        </p>
+          <div>
+            <label htmlFor="fp-email" className="label">
+              {t.common.email}
+            </label>
+            <input
+              id="fp-email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="input"
+              placeholder="email@example.com"
+            />
+          </div>
 
-        {sent ? (
-          <>
-            <div className="alert alert-success">
-              Agar bu email bilan hisob mavjud bo&apos;lsa, tiklash havolasi
-              yuborildi. Pochtangizni tekshiring — havola 1 soat amal qiladi.
-            </div>
-            <Link href="/login" className="btn btn-ghost mt-5 w-full">
-              Kirish sahifasiga qaytish
-            </Link>
-          </>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && <div className="alert alert-danger">{error}</div>}
-
-            <div>
-              <label htmlFor="fp-email" className="label">Email</label>
-              <input
-                id="fp-email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="input"
-                placeholder="email@example.com"
-              />
-            </div>
-
-            <button type="submit" disabled={loading} className="btn btn-accent w-full">
-              {loading ? "Yuborilmoqda..." : "Havola yuborish"}
-            </button>
-          </form>
-        )}
-
-        <p className="mt-6 text-center text-sm" style={{ color: "var(--muted)" }}>
-          Esladingizmi?{" "}
-          <Link href="/login" className="link">Kirish</Link>
-        </p>
-      </div>
-    </div>
+          <button type="submit" disabled={loading} className="btn btn-accent w-full">
+            {loading ? t.auth.sending : t.auth.sendLink}
+          </button>
+        </form>
+      )}
+    </AuthLayout>
   );
 }
