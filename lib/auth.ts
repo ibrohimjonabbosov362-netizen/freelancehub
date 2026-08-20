@@ -16,11 +16,15 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60,
   },
-  // Cookie prefiksi HTTPS'ga qarab tanlanadi, NODE_ENV'ga emas. Aks holda
-  // http orqali xizmat qilinayotgan production build'da NextAuth "__Secure-"
-  // cookie yozadi-yu, proxy (middleware) uni topa olmay har safar /login ga
-  // qaytaradi — kirish ishlamay qoladi.
-  useSecureCookies: (process.env.NEXTAUTH_URL ?? "").startsWith("https://"),
+  // Cookie prefiksi HTTPS'ga qarab tanlanadi, NODE_ENV'ga emas. Bu yerdagi
+  // mantiq next-auth'ning getToken() mantiqi bilan **aynan bir xil** bo'lishi
+  // shart: proxy (middleware) tokenni o'sha qoida bo'yicha qidiradi. Farq
+  // bo'lsa, cookie yozilgani bilan topilmaydi va foydalanuvchi har safar
+  // /login ga qaytariladi. NEXTAUTH_URL berilmasa Vercel'ni hisobga olamiz —
+  // getToken ham aynan shunday qiladi.
+  useSecureCookies:
+    process.env.NEXTAUTH_URL?.startsWith("https://") ??
+    Boolean(process.env.VERCEL),
   pages: {
     signIn: "/login",
   },
