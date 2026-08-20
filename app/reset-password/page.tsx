@@ -112,7 +112,7 @@ function ResetForm() {
 export default function ResetPasswordPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12">
-      <Link href="/" className="font-display mb-8 text-xl font-semibold">
+      <Link href="/" className="brand mb-8 text-xl font-semibold">
         Freelance<span className="gradient-text">Hub</span>
       </Link>
 

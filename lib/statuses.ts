@@ -74,3 +74,23 @@ export const paymentStatusBadges: Record<PaymentStatus, string> = {
   PAID: "badge-success",
   OVERDUE: "badge-danger",
 };
+
+export const CONTRACT_STATUSES = ["DRAFT", "PENDING_APPROVAL", "APPROVED"] as const;
+
+export type ContractStatus = (typeof CONTRACT_STATUSES)[number];
+
+export const contractStatusBadges: Record<ContractStatus, string> = {
+  DRAFT: "badge-neutral",
+  PENDING_APPROVAL: "badge-warning",
+  APPROVED: "badge-success",
+};
+
+export const CLIENT_STATUSES = ["ACTIVE", "PENDING", "ARCHIVED"] as const;
+
+export type ClientStatus = (typeof CLIENT_STATUSES)[number];
+
+export const clientStatusBadges: Record<ClientStatus, string> = {
+  ACTIVE: "badge-success",
+  PENDING: "badge-warning",
+  ARCHIVED: "badge-neutral",
+};

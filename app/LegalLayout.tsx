@@ -12,7 +12,7 @@ export default function LegalLayout({
   return (
     <div className="flex min-h-screen flex-col">
       <header className="flex items-center justify-between px-6 py-6 sm:px-8">
-        <Link href="/" className="font-display text-xl font-semibold">
+        <Link href="/" className="brand text-xl font-semibold">
           Freelance<span className="gradient-text">Hub</span>
         </Link>
         <nav className="flex items-center gap-5 text-sm">

@@ -3,37 +3,39 @@
 @tailwind utilities;
 
 :root {
-  --bg: #0a0714;
-  --surface: #15122a;
-  --surface-2: #1c1838;
-  --surface-3: #262046;
+  --bg: #08090b;
+  --surface: #0f1013;
+  --surface-2: #16171b;
+  --surface-3: #1e2026;
 
-  --ink: #f2f0fa;
-  --muted: #a29dc4;
-  --faint: #6f6a92;
+  --ink: #f4f4f5;
+  --muted: #9b9ba4;
+  --faint: #6b6b76;
 
-  --border: #2a2450;
-  --border-strong: #3b3468;
+  --border: #1f2026;
+  --border-strong: #2c2e36;
 
-  --accent-1: #a855f7;
+  --accent-1: #8b5cf6;
   --accent-2: #6366f1;
-  --accent-glow: rgba(168, 85, 247, 0.4);
+  --accent-soft: #a78bfa;
+  --accent-glow: rgba(139, 92, 246, 0.28);
 
   --success: #34d399;
-  --success-dim: rgba(52, 211, 153, 0.12);
+  --success-dim: rgba(52, 211, 153, 0.1);
   --warning: #fbbf24;
-  --warning-dim: rgba(251, 191, 36, 0.12);
-  --danger: #fb7185;
-  --danger-dim: rgba(251, 113, 133, 0.12);
+  --warning-dim: rgba(251, 191, 36, 0.1);
+  --danger: #f87171;
+  --danger-dim: rgba(248, 113, 113, 0.1);
 
   /* grafik ranglari: binafsha+ko'k juftligi ajralmagani uchun firuza olindi */
   --viz-1: #9085e9;
   --viz-2: #199e70;
   --viz-3: #c98500;
-  --viz-grid: rgba(162, 157, 196, 0.14);
+  --viz-grid: rgba(155, 155, 164, 0.1);
 
-  --radius: 0.875rem;
-  --radius-sm: 0.625rem;
+  --radius: 1rem;
+  --radius-sm: 0.75rem;
+  --radius-lg: 1.25rem;
 }
 
 * {
@@ -49,8 +51,7 @@ body {
   color: var(--ink);
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   background-image:
-    radial-gradient(55rem 28rem at 15% -8rem, rgba(168, 85, 247, 0.18), transparent 70%),
-    radial-gradient(45rem 26rem at 85% 0rem, rgba(99, 102, 241, 0.14), transparent 70%);
+    radial-gradient(48rem 24rem at 50% -10rem, rgba(139, 92, 246, 0.1), transparent 72%);
   background-attachment: fixed;
 }
 
@@ -59,6 +60,13 @@ code, pre, kbd, samp {
 }
 
 .font-display {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.032em;
+  font-weight: 600;
+}
+
+/* Logotip serif bo'lib qoladi — brendni ajratib turadi */
+.brand {
   font-family: var(--font-fraunces), Georgia, serif;
   letter-spacing: -0.015em;
 }
@@ -102,10 +110,16 @@ code, pre, kbd, samp {
   }
 
   .card {
-    background: linear-gradient(180deg, var(--surface), color-mix(in srgb, var(--surface) 88%, black));
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px -18px rgba(0, 0, 0, 0.9);
+  }
+
+  .card-glass {
+    background: color-mix(in srgb, var(--surface) 70%, transparent);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
   }
 
   .card-hover {
@@ -113,8 +127,7 @@ code, pre, kbd, samp {
   }
   .card-hover:hover {
     border-color: var(--border-strong);
-    transform: translateY(-1px);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 18px 40px -20px rgba(0, 0, 0, 1);
+    background: var(--surface-2);
   }
 
   .btn {
@@ -129,7 +142,6 @@ code, pre, kbd, samp {
   .btn-accent {
     background: linear-gradient(100deg, var(--accent-1), var(--accent-2));
     color: #fff;
-    box-shadow: 0 6px 20px -8px var(--accent-glow);
   }
   .btn-accent:hover:not(:disabled) { filter: brightness(1.08); }
 
@@ -420,4 +432,14 @@ code, pre, kbd, samp {
   padding: 1rem;
   margin-bottom: 2rem;
   font-size: 0.875rem;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 37%, var(--surface-2) 63%);
+  background-size: 400% 100%;
+  animation: skeleton 1.4s ease-in-out infinite;
+}
+@keyframes skeleton {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
 }

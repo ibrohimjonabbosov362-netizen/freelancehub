@@ -1,17 +1,21 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Topbar from "../Topbar";
+import Icon from "../Icon";
 import Sparkbars from "../charts/Sparkbars";
 import RevenueArea from "../charts/RevenueArea";
+import { Avatar, StatCard } from "../components/ui";
+import { useI18n } from "@/lib/i18n/client";
+import { fill } from "@/lib/i18n/dictionaries";
 import { formatAmount, formatAmountShort, formatDate } from "@/lib/format";
 import {
   paymentStatusBadges,
-  paymentStatusLabels,
   projectStatusBadges,
-  projectStatusLabels,
   type PaymentStatus,
   type ProjectStatus,
+  type ProposalStatus,
 } from "@/lib/statuses";
 
 export type DashboardData = {
@@ -20,9 +24,9 @@ export type DashboardData = {
   clientsCount: number;
   activeProjectsCount: number;
   monthlyEarnings: number;
+  pendingTotal: number;
   proposalTiles: {
-    key: string;
-    label: string;
+    key: ProposalStatus;
     count: number;
     trend: number[];
     change: number | null;
@@ -30,6 +34,22 @@ export type DashboardData = {
     href: string;
   }[];
   revenue: { label: string; value: number }[];
+  activity: {
+    id: string;
+    kind: "client" | "proposal" | "project" | "payment";
+    text: string;
+    href: string;
+    at: string;
+  }[];
+  projects: {
+    id: string;
+    title: string;
+    clientName: string;
+    status: ProjectStatus;
+    deadline: string | null;
+    paidTotal: number;
+    total: number;
+  }[];
   clients: {
     id: string;
     name: string;
@@ -49,123 +69,108 @@ export type DashboardData = {
   }[];
 };
 
-const trendLabels = ["6 hafta", "5 hafta", "4 hafta", "3 hafta", "2 hafta", "1 hafta"];
+const ACTIVITY_ICONS: Record<DashboardData["activity"][number]["kind"], string> = {
+  client: "users",
+  proposal: "file",
+  project: "folder",
+  payment: "payment",
+};
 
 export default function DashboardView({ data }: { data: DashboardData }) {
-  const heroStats = [
-    { label: "Faol loyihalar", value: String(data.activeProjectsCount) },
-    { label: "Jami mijozlar", value: String(data.clientsCount) },
-    {
-      label: "Bu oy, so'm",
-      value: formatAmountShort(data.monthlyEarnings, { currency: false }),
-    },
-  ];
+  const { t } = useI18n();
+
+  // Salomlashuv serverda emas, brauzerda hisoblanadi — hidratsiya mos kelsin
+  const [greeting, setGreeting] = useState("");
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    setGreeting(
+      hour < 12
+        ? t.dashboard.greetingMorning
+        : hour < 18
+          ? t.dashboard.greetingDay
+          : t.dashboard.greetingEvening
+    );
+  }, [t]);
+
+  const trendLabels = Array.from(
+    { length: 6 },
+    (_, i) => `${6 - i} ${t.dashboard.weeks}`
+  );
+
+  function activityLabel(item: DashboardData["activity"][number]) {
+    switch (item.kind) {
+      case "client":
+        return fill(t.dashboard.activityClient, { name: item.text });
+      case "proposal":
+        return fill(t.dashboard.activityProposal, { title: item.text });
+      case "project":
+        return fill(t.dashboard.activityProject, { title: item.text });
+      case "payment":
+        return fill(t.dashboard.activityPayment, {
+          amount: formatAmount(item.text),
+        });
+    }
+  }
 
   return (
     <div className="px-5 py-6 sm:px-8 sm:py-8">
       <div className="mx-auto max-w-6xl">
         <Topbar />
 
-        <div className="grid gap-5 lg:grid-cols-3">
-          {/* Salomlashuv */}
-          <section className="card relative overflow-hidden p-6 lg:col-span-1">
-            <div
-              className="pointer-events-none absolute inset-0 opacity-90"
-              style={{
-                background:
-                  "linear-gradient(135deg, rgba(168,85,247,0.28), rgba(99,102,241,0.12) 55%, transparent)",
-              }}
-            />
-            <div className="relative">
-              <p className="hint">Yana xush kelibsiz</p>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-                {data.name}
-              </h1>
-              <span
-                className={`badge mt-3 ${data.isPremium ? "badge-accent" : "badge-neutral"}`}
-              >
-                {data.isPremium ? "Premium" : "Bepul tarif"}
-              </span>
+        {/* Salomlashuv */}
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-[1.75rem]">
+              {greeting || t.dashboard.welcome}
+              {data.name ? `, ${data.name}` : ""} <span aria-hidden="true">👋</span>
+            </h1>
+            <p className="hint mt-1">{t.dashboard.revenueSub}</p>
+          </div>
 
-              <dl className="mt-6 grid grid-cols-3 gap-3">
-                {heroStats.map((stat) => (
-                  <div key={stat.label}>
-                    <dt className="text-xs text-[var(--muted)]">{stat.label}</dt>
-                    <dd className="mt-1 text-lg font-semibold tracking-tight">
-                      {stat.value}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          </section>
+          <span
+            className={`badge ${data.isPremium ? "badge-accent" : "badge-neutral"}`}
+          >
+            {data.isPremium ? t.dashboard.premium : t.dashboard.freePlan}
+          </span>
+        </div>
 
-          {/* Takliflar holati */}
-          <section className="lg:col-span-2">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="section-title">Takliflar holati</h2>
-              <Link href="/proposals" className="link-muted text-sm">
-                Hammasi →
-              </Link>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-3">
-              {data.proposalTiles.map((tile) => (
-                <div key={tile.key} className="card card-hover flex flex-col p-4">
-                  <div className="mb-2 flex items-center gap-2">
-                    <span
-                      className="h-2 w-2 rounded-full"
-                      style={{ background: tile.color }}
-                      aria-hidden="true"
-                    />
-                    <span className="text-sm text-[var(--muted)]">
-                      {tile.label}
-                    </span>
-                  </div>
-
-                  <div className="mb-3 flex items-baseline gap-2">
-                    <p className="text-2xl font-semibold tracking-tight">
-                      {tile.count}
-                    </p>
-                    {tile.change !== null && (
-                      <span
-                        className={`text-xs font-medium ${
-                          tile.change >= 0
-                            ? "text-[var(--success)]"
-                            : "text-[var(--danger)]"
-                        }`}
-                        title="So'nggi 3 hafta, oldingi 3 haftaga nisbatan"
-                      >
-                        {tile.change >= 0 ? "▲" : "▼"} {Math.abs(tile.change)}%
-                      </span>
-                    )}
-                  </div>
-
-                  <Sparkbars
-                    values={tile.trend}
-                    labels={trendLabels}
-                    color={tile.color}
-                    ariaLabel={`${tile.label}: so'nggi olti haftadagi dinamika`}
-                  />
-
-                  <Link
-                    href={tile.href}
-                    className="btn btn-ghost btn-sm mt-3 w-full"
-                  >
-                    Batafsil
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </section>
+        {/* Asosiy ko'rsatkichlar */}
+        <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label={t.dashboard.totalClients}
+            value={data.clientsCount}
+            href="/clients"
+            icon={<Icon name="users" className="h-4 w-4" />}
+          />
+          <StatCard
+            label={t.dashboard.activeProjects}
+            value={data.activeProjectsCount}
+            href="/projects"
+            tone="accent"
+            icon={<Icon name="folder" className="h-4 w-4" />}
+          />
+          <StatCard
+            label={t.dashboard.pending}
+            value={formatAmountShort(data.pendingTotal)}
+            href="/payments"
+            tone={data.pendingTotal > 0 ? "warning" : "neutral"}
+            icon={<Icon name="clock" className="h-4 w-4" />}
+          />
+          <StatCard
+            label={t.dashboard.thisMonth}
+            value={formatAmountShort(data.monthlyEarnings)}
+            tone="success"
+            icon={<Icon name="payment" className="h-4 w-4" />}
+          />
         </div>
 
         {/* Daromad grafigi */}
-        <section className="card mt-5 p-6">
+        <section className="card mb-5 p-6">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 className="section-title">To&apos;lovlar dinamikasi</h2>
-              <p className="hint mt-1">So&apos;nggi 6 oy, qabul qilingan to&apos;lovlar</p>
+              <h2 className="section-title">{t.dashboard.paymentsTrend}</h2>
+              <p className="hint mt-1">{t.dashboard.paymentsTrendSub}</p>
             </div>
             <p className="text-xl font-semibold tracking-tight">
               {formatAmountShort(data.revenue.reduce((s, r) => s + r.value, 0))}
@@ -174,133 +179,235 @@ export default function DashboardView({ data }: { data: DashboardData }) {
           <RevenueArea data={data.revenue} />
         </section>
 
-        <div className="mt-5 grid gap-5 lg:grid-cols-2">
-          {/* Mijozlar */}
+        {/* Takliflar holati */}
+        <section className="mb-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="section-title">{t.dashboard.proposalStatus}</h2>
+            <Link href="/proposals" className="link-muted text-sm">
+              {t.common.viewAll} →
+            </Link>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            {data.proposalTiles.map((tile) => (
+              <div key={tile.key} className="card card-hover flex flex-col p-4">
+                <div className="mb-2 flex items-center gap-2">
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ background: tile.color }}
+                    aria-hidden="true"
+                  />
+                  <span className="text-sm text-[var(--muted)]">
+                    {t.status[tile.key]}
+                  </span>
+                </div>
+
+                <div className="mb-3 flex items-baseline gap-2">
+                  <p className="text-2xl font-semibold tracking-tight tabular-nums">
+                    {tile.count}
+                  </p>
+                  {tile.change !== null && (
+                    <span
+                      className={`text-xs font-medium ${
+                        tile.change >= 0
+                          ? "text-[var(--success)]"
+                          : "text-[var(--danger)]"
+                      }`}
+                      title={t.dashboard.trendHint}
+                    >
+                      {tile.change >= 0 ? "▲" : "▼"} {Math.abs(tile.change)}%
+                    </span>
+                  )}
+                </div>
+
+                <Sparkbars
+                  values={tile.trend}
+                  labels={trendLabels}
+                  color={tile.color}
+                  ariaLabel={t.status[tile.key]}
+                />
+
+                <Link href={tile.href} className="btn btn-ghost btn-sm mt-3 w-full">
+                  {t.common.seeDetails}
+                </Link>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <div className="grid gap-5 lg:grid-cols-2">
+          {/* So'nggi loyihalar */}
           <section className="card p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="section-title">Mijozlar</h2>
-              <Link href="/clients" className="link-muted text-sm">
-                Hammasi →
+              <h2 className="section-title">{t.dashboard.recentProjects}</h2>
+              <Link href="/projects" className="link-muted text-sm">
+                {t.common.viewAll} →
               </Link>
             </div>
 
-            {data.clients.length === 0 ? (
-              <p className="hint">Hali mijoz qo&apos;shilmagan.</p>
+            {data.projects.length === 0 ? (
+              <p className="hint">{t.dashboard.noProjects}</p>
             ) : (
-              <div className="table-wrap -mx-2">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Mijoz</th>
-                      <th>Loyiha</th>
-                      <th>Holat</th>
-                      <th className="text-right">Amal</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.clients.map((client) => (
-                      <tr key={client.id}>
-                        <td>
-                          <div className="flex min-w-0 items-center gap-2.5">
-                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--surface-3)] text-xs font-semibold">
-                              {client.name.charAt(0).toUpperCase()}
-                            </span>
-                            <Link
-                              href={`/clients/${client.id}`}
-                              className="link truncate"
-                            >
-                              {client.name}
-                            </Link>
+              <ul className="space-y-3.5">
+                {data.projects.map((project) => {
+                  const percent =
+                    project.total > 0
+                      ? Math.min(
+                          100,
+                          Math.round((project.paidTotal / project.total) * 100)
+                        )
+                      : 0;
+
+                  return (
+                    <li
+                      key={project.id}
+                      className="border-t border-[var(--border)] pt-3.5 first:border-0 first:pt-0"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <Link
+                          href={`/projects/${project.id}`}
+                          className="link min-w-0 truncate text-sm font-medium"
+                        >
+                          {project.title}
+                        </Link>
+                        <span className={`badge ${projectStatusBadges[project.status]}`}>
+                          {t.status[project.status]}
+                        </span>
+                      </div>
+
+                      <p className="mt-1 truncate text-xs text-[var(--faint)]">
+                        {project.clientName}
+                        {project.deadline && ` · ${formatDate(project.deadline)}`}
+                      </p>
+
+                      {project.total > 0 && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <div className="meter flex-1">
+                            <span style={{ width: `${percent}%` }} />
                           </div>
-                        </td>
-                        <td className="max-w-[10rem] truncate text-[var(--muted)]">
-                          {client.projectTitle ?? client.company ?? "—"}
-                        </td>
-                        <td>
-                          {client.status ? (
-                            <span className={`badge ${projectStatusBadges[client.status]}`}>
-                              {projectStatusLabels[client.status]}
-                            </span>
-                          ) : (
-                            <span className="text-[var(--faint)]">—</span>
-                          )}
-                        </td>
-                        <td>
-                          <div className="flex items-center justify-end gap-1">
-                            <Link
-                              href={`/clients/${client.id}`}
-                              aria-label={`${client.name} sahifasi`}
-                              title="Ochish"
-                              className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--muted)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--ink)]"
-                            >
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
-                                <path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                              </svg>
-                            </Link>
-                            <a
-                              href={`mailto:${client.email}`}
-                              aria-label={`${client.name} ga xat yozish`}
-                              title="Email yuborish"
-                              className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--muted)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--ink)]"
-                            >
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
-                                <path d="M4 6h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Zm0 1 8 6 8-6" />
-                              </svg>
-                            </a>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                          <span className="text-xs tabular-nums text-[var(--muted)]">
+                            {percent}%
+                          </span>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
             )}
           </section>
 
-          {/* To'lovlar */}
+          {/* Yaqin to'lovlar */}
           <section className="card p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="section-title">So&apos;nggi to&apos;lovlar</h2>
-              <Link href="/projects" className="link-muted text-sm">
-                Loyihalar →
+              <h2 className="section-title">{t.dashboard.upcomingPayments}</h2>
+              <Link href="/payments" className="link-muted text-sm">
+                {t.common.viewAll} →
               </Link>
             </div>
 
             {data.payments.length === 0 ? (
-              <p className="hint">
-                Hali to&apos;lov yozuvi yo&apos;q. Loyiha ichida qo&apos;shishingiz
-                mumkin.
-              </p>
+              <p className="hint">{t.dashboard.noPayments}</p>
             ) : (
-              <ul className="space-y-3">
+              <ul className="space-y-3.5">
                 {data.payments.map((payment) => (
                   <li
                     key={payment.id}
-                    className="flex items-center justify-between gap-3 border-t border-[var(--border)] pt-3 first:border-0 first:pt-0"
+                    className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-3.5 first:border-0 first:pt-0"
                   >
                     <div className="min-w-0">
                       <Link
                         href={`/projects/${payment.projectId}`}
-                        className="link block truncate text-sm"
+                        className="link block truncate text-sm font-medium"
                       >
                         {payment.projectTitle}
                       </Link>
-                      <span className="block truncate text-xs text-[var(--faint)]">
+                      <p className="truncate text-xs text-[var(--faint)]">
                         {payment.clientName} · {formatDate(payment.dueDate)}
-                      </span>
+                      </p>
                     </div>
-
-                    <div className="flex shrink-0 items-center gap-3">
-                      <span className="text-sm font-medium tabular-nums">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm tabular-nums">
                         {formatAmount(payment.amount)}
                       </span>
                       <span className={`badge ${paymentStatusBadges[payment.status]}`}>
-                        {paymentStatusLabels[payment.status]}
+                        {t.status[payment.status]}
                       </span>
                     </div>
                   </li>
                 ))}
               </ul>
+            )}
+          </section>
+
+          {/* So'nggi mijozlar */}
+          <section className="card p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="section-title">{t.dashboard.recentClients}</h2>
+              <Link href="/clients" className="link-muted text-sm">
+                {t.common.viewAll} →
+              </Link>
+            </div>
+
+            {data.clients.length === 0 ? (
+              <p className="hint">{t.dashboard.noClients}</p>
+            ) : (
+              <ul className="space-y-3.5">
+                {data.clients.map((client) => (
+                  <li
+                    key={client.id}
+                    className="flex items-center gap-3 border-t border-[var(--border)] pt-3.5 first:border-0 first:pt-0"
+                  >
+                    <Avatar name={client.name} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <Link
+                        href={`/clients/${client.id}`}
+                        className="link block truncate text-sm font-medium"
+                      >
+                        {client.name}
+                      </Link>
+                      <p className="truncate text-xs text-[var(--faint)]">
+                        {client.projectTitle || client.company || client.email}
+                      </p>
+                    </div>
+                    {client.status && (
+                      <span className={`badge ${projectStatusBadges[client.status]}`}>
+                        {t.status[client.status]}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {/* Harakatlar tasmasi */}
+          <section className="card p-6">
+            <h2 className="section-title mb-4">{t.dashboard.activity}</h2>
+
+            {data.activity.length === 0 ? (
+              <p className="hint">{t.dashboard.noActivity}</p>
+            ) : (
+              <ol className="relative space-y-4 pl-6">
+                <span
+                  className="absolute bottom-2 left-[0.6875rem] top-2 w-px bg-[var(--border)]"
+                  aria-hidden="true"
+                />
+                {data.activity.map((item) => (
+                  <li key={item.id} className="relative">
+                    <span
+                      className="absolute -left-6 top-0.5 flex h-6 w-6 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-2)] text-[var(--muted)]"
+                      aria-hidden="true"
+                    >
+                      <Icon name={ACTIVITY_ICONS[item.kind]} className="h-3 w-3" />
+                    </span>
+                    <Link href={item.href} className="link block truncate text-sm">
+                      {activityLabel(item)}
+                    </Link>
+                    <p className="text-xs text-[var(--faint)]">{formatDate(item.at)}</p>
+                  </li>
+                ))}
+              </ol>
             )}
           </section>
         </div>

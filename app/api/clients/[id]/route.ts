@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { CLIENT_STATUSES, type ClientStatus } from "@/lib/statuses";
+
+/** Bo'sh satrni null ga aylantiradi — bazada "" saqlanmasin */
+function optionalText(value: unknown, max = 500): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed.slice(0, max) : null;
+}
 
 export async function GET(
   request: Request,
@@ -17,7 +25,11 @@ export async function GET(
     where: { id, userId },
     include: {
       proposals: { orderBy: { createdAt: "desc" } },
-      projects: { orderBy: { createdAt: "desc" } },
+      projects: {
+        orderBy: { createdAt: "desc" },
+        // Mijoz sahifasidagi daromad va to'lovlar shu yerdan hisoblanadi
+        include: { payments: { orderBy: { dueDate: "asc" } } },
+      },
     },
   });
 
@@ -39,7 +51,7 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { name, email, company } = await request.json();
+  const { name, email, company, phone, status, notes } = await request.json();
 
   if (!name || !email) {
     return NextResponse.json(
@@ -63,9 +75,15 @@ export async function PATCH(
   const client = await prisma.client.update({
     where: { id },
     data: {
-      name: String(name).trim(),
+      name: String(name).trim().slice(0, 120),
       email: normalizedEmail,
-      company: company ? String(company).trim() : null,
+      company: optionalText(company, 120),
+      phone: optionalText(phone, 40),
+      notes: optionalText(notes, 2000),
+      // Holat yuborilmasa avvalgisi saqlanadi
+      status: CLIENT_STATUSES.includes(status as ClientStatus)
+        ? (status as ClientStatus)
+        : existing.status,
     },
   });
 

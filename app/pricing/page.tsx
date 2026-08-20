@@ -1,125 +1,120 @@
-import Link from "next/link";
-import PricingCta from "./PricingCta";
+"use client";
 
-const plans = [
-  {
-    name: "Bepul",
-    price: "0 so'm",
-    description: "Boshlash uchun yetarli",
-    features: [
-      "3 tagacha mijoz",
-      "Cheksiz taklif va loyiha",
-      "Asosiy boshqaruv paneli",
-    ],
-    cta: "Bepul boshlash",
-    href: "/register",
-    highlighted: false,
-  },
-  {
-    name: "Premium",
-    price: "99 000 so'm/oy",
-    description: "O'sib borayotgan biznes uchun",
-    features: [
-      "Cheksiz mijoz",
-      "Tayyor shartnoma shablonlari",
-      "Shartnomani PDF'ga eksport qilish",
-      "Ustuvor qo'llab-quvvatlash",
-    ],
-    cta: "Premium'ga o'tish",
-    href: "/register",
-    highlighted: true,
-  },
-];
+import Link from "next/link";
+import SiteHeader from "../components/SiteHeader";
+import SiteFooter from "../components/SiteFooter";
+import PricingCta from "./PricingCta";
+import { useI18n } from "@/lib/i18n/client";
 
 export default function PricingPage() {
-  return (
-    <div className="min-h-screen flex flex-col">
-      <header className="flex items-center justify-between px-6 py-6 sm:px-8">
-        <Link href="/" className="font-display text-xl font-semibold">
-          Freelance<span className="gradient-text">Hub</span>
-        </Link>
-        <nav className="flex items-center gap-5 text-sm">
-          <Link href="/login" className="link-muted">
-            Kirish
-          </Link>
-        </nav>
-      </header>
+  const { locale, t } = useI18n();
+  const en = locale === "en";
 
-      <main className="flex-1 px-6 py-16 sm:px-8">
-        <div className="max-w-4xl mx-auto text-center mb-12">
-          <h1 className="font-display mb-4 text-3xl font-semibold sm:text-4xl">
-            Tariflar
+  const plans = [
+    {
+      name: "Free",
+      price: en ? "$0" : "0 so'm",
+      period: en ? "/ month" : "/ oy",
+      description: en ? "Everything you need to start" : "Boshlash uchun yetarli",
+      features: en
+        ? ["Up to 3 clients", "Client management", "Proposals", "Basic project management", "Contracts"]
+        : ["3 tagacha mijoz", "Mijozlar bazasi", "Takliflar", "Asosiy loyiha boshqaruvi", "Shartnomalar"],
+      cta: en ? "Start for free" : "Bepul boshlash",
+      highlighted: false,
+    },
+    {
+      name: "Pro",
+      price: en ? "$19" : "99 000 so'm",
+      period: en ? "/ month" : "/ oy",
+      description: en ? "For a growing freelance business" : "O'sib borayotgan biznes uchun",
+      features: en
+        ? ["Unlimited clients", "Unlimited projects", "Contract templates", "Payment tracking", "PDF export", "Priority support"]
+        : ["Cheksiz mijoz", "Cheksiz loyiha", "Shartnoma shablonlari", "To'lovlarni kuzatish", "PDF eksport", "Ustuvor qo'llab-quvvatlash"],
+      cta: en ? "Start free" : "Bepul boshlash",
+      highlighted: true,
+    },
+  ];
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      <SiteHeader />
+
+      <main className="flex-1 px-5 py-16 sm:px-8 sm:py-20">
+        <div className="mx-auto max-w-2xl text-center">
+          <h1 className="font-display text-4xl font-semibold tracking-tight">
+            {en ? "Simple, honest pricing" : "Oddiy va halol narxlar"}
           </h1>
-          <p className="text-[var(--muted)]">Ehtiyojingizga mos tarifni tanlang</p>
+          <p className="hint mt-4">
+            {en
+              ? "Start free. Upgrade when your client list outgrows it."
+              : "Bepul boshlang. Mijozlaringiz ko'payganda Pro'ga o'tasiz."}
+          </p>
         </div>
 
-        <div className="max-w-3xl mx-auto grid sm:grid-cols-2 gap-6">
+        <div className="mx-auto mt-14 grid max-w-3xl gap-5 sm:grid-cols-2">
           {plans.map((plan) => (
             <div
               key={plan.name}
-              className="card relative p-8"
+              className="card relative p-7"
               style={
                 plan.highlighted
-                  ? {
-                      borderColor: "var(--accent-1)",
-                      boxShadow: "0 0 0 1px var(--accent-1), 0 20px 50px -30px var(--accent-glow)",
-                    }
+                  ? { borderColor: "var(--accent-1)", background: "var(--surface-2)" }
                   : undefined
               }
             >
               {plan.highlighted && (
-                <span className="badge badge-accent absolute -top-3 right-6">
-                  Ommabop
+                <span className="badge badge-accent absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap">
+                  {en ? "Most Popular" : "Ommabop"}
                 </span>
               )}
-              <h2 className="mb-1 text-xl font-semibold">{plan.name}</h2>
-              <p className="mb-4 text-sm text-[var(--muted)]">
-                {plan.description}
-              </p>
-              <p className="mb-6 text-3xl font-semibold tracking-tight">{plan.price}</p>
 
-              <ul className="mb-8 space-y-2.5 text-sm text-[var(--muted)]">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2">
-                    <svg
-                      viewBox="0 0 20 20"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent-1)]"
-                      aria-hidden="true"
-                    >
+              <h2 className="text-lg font-semibold">{plan.name}</h2>
+              <p className="hint mt-1">{plan.description}</p>
+
+              <p className="mt-6 flex items-baseline gap-1.5">
+                <span className="font-display text-4xl font-semibold tracking-tight">{plan.price}</span>
+                <span className="text-sm" style={{ color: "var(--faint)" }}>{plan.period}</span>
+              </p>
+
+              <ul className="mt-7 space-y-3 text-sm" style={{ color: "var(--muted)" }}>
+                {plan.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-2.5">
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2"
+                         strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                         className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--accent-soft)]">
                       <path d="m4 10 4 4 8-8" />
                     </svg>
-                    {f}
+                    {feature}
                   </li>
                 ))}
               </ul>
 
-              <PricingCta
-                href={plan.href}
-                label={plan.cta}
-                premium={plan.highlighted}
-                className={`block w-full text-center px-4 py-2 rounded-lg text-sm disabled:opacity-50 ${
-                  plan.highlighted
-                    ? "btn-accent"
-                    : "border border-[var(--border)]"
-                }`}
-              />
+              <div className="mt-8">
+                <PricingCta
+                  href="/register"
+                  label={plan.cta}
+                  premium={plan.highlighted}
+                  className={`btn w-full ${plan.highlighted ? "btn-accent" : "btn-ghost"}`}
+                />
+              </div>
             </div>
           ))}
         </div>
+
+        <p className="hint mx-auto mt-10 max-w-md text-center">
+          {en
+            ? "Pro is billed monthly and renews automatically. Cancel any time — access continues until the period ends."
+            : "Pro oylik to'lanadi va avtomatik uzayadi. Istalgan vaqtda bekor qilsangiz, davr oxirigacha amal qiladi."}
+        </p>
+
+        <div className="mx-auto mt-4 text-center">
+          <Link href="/#faq" className="link-muted text-sm">
+            {t.landing.faqTitle} →
+          </Link>
+        </div>
       </main>
 
-      <footer className="border-t border-[var(--border)] px-6 py-6 text-center text-sm text-[var(--faint)] sm:px-8">
-        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-x-5 gap-y-2">
-          <span>© 2026 FreelanceHub</span>
-          <Link href="/privacy" className="link-muted">Maxfiylik siyosati</Link>
-          <Link href="/terms" className="link-muted">Foydalanish shartlari</Link>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

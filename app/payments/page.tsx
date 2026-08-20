@@ -1,15 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import AppShell from "../AppShell";
 import Topbar from "../Topbar";
 import Icon from "../Icon";
+import {
+  EmptyState,
+  PageHeader,
+  StatCard,
+  TableSkeleton,
+  useToast,
+} from "../components/ui";
+import { useI18n } from "@/lib/i18n/client";
+import { fill } from "@/lib/i18n/dictionaries";
 import { formatAmount, formatAmountShort, formatDate } from "@/lib/format";
 import {
   PAYMENT_STATUSES,
   paymentStatusBadges,
-  paymentStatusLabels,
   type PaymentStatus,
 } from "@/lib/statuses";
 
@@ -27,30 +35,33 @@ type Payment = {
 
 type Totals = { all: number; paid: number; outstanding: number; overdue: number };
 
+const EMPTY_TOTALS: Totals = { all: 0, paid: 0, outstanding: 0, overdue: 0 };
+
 async function fetchPayments(): Promise<{
   payments: Payment[];
   totals: Totals;
   error: string;
 }> {
-  const empty = { all: 0, paid: 0, outstanding: 0, overdue: 0 };
-
   try {
     const res = await fetch("/api/payments");
     const data = await res.json();
 
     if (!res.ok) {
-      return { payments: [], totals: empty, error: data?.error || "Yuklab bo'lmadi" };
+      return { payments: [], totals: EMPTY_TOTALS, error: data?.error || "load" };
     }
 
     return { payments: data.payments, totals: data.totals, error: "" };
   } catch {
-    return { payments: [], totals: empty, error: "Server bilan bog'lanishda xatolik" };
+    return { payments: [], totals: EMPTY_TOTALS, error: "network" };
   }
 }
 
 export default function PaymentsPage() {
+  const { t } = useI18n();
+  const toast = useToast();
+
   const [payments, setPayments] = useState<Payment[]>([]);
-  const [totals, setTotals] = useState<Totals>({ all: 0, paid: 0, outstanding: 0, overdue: 0 });
+  const [totals, setTotals] = useState<Totals>(EMPTY_TOTALS);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [actionError, setActionError] = useState("");
@@ -96,58 +107,91 @@ export default function PaymentsPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setActionError(data.error || "Holatni yangilab bo'lmadi");
+        setActionError(data.error || t.common.genericError);
         return;
       }
 
+      toast(t.payments.statusUpdated);
       await reload();
     } catch {
-      setActionError("Server bilan bog'lanishda xatolik");
+      setActionError(t.common.serverError);
     } finally {
       setUpdatingId(null);
     }
   }
 
-  const term = query.trim().toLowerCase();
-  const visible = payments.filter((p) => {
-    if (filter !== "ALL" && p.status !== filter) return false;
-    if (!term) return true;
-    return (
-      p.projectTitle.toLowerCase().includes(term) ||
-      p.clientName.toLowerCase().includes(term) ||
-      String(p.invoiceNo).includes(term)
-    );
-  });
+  const visible = useMemo(() => {
+    const term = query.trim().toLowerCase();
 
-  const cards = [
-    { label: "Jami", value: totals.all, tone: "" },
-    { label: "Qabul qilingan", value: totals.paid, tone: "text-[var(--success)]" },
-    { label: "Kutilayotgan", value: totals.outstanding, tone: "text-[var(--warning)]" },
-    { label: "Muddati o'tgan", value: totals.overdue, tone: "text-[var(--danger)]" },
-  ];
+    return payments.filter((payment) => {
+      if (filter !== "ALL" && payment.status !== filter) return false;
+      if (!term) return true;
+
+      return (
+        payment.projectTitle.toLowerCase().includes(term) ||
+        payment.clientName.toLowerCase().includes(term) ||
+        String(payment.invoiceNo).includes(term)
+      );
+    });
+  }, [payments, filter, query]);
+
+  // Yaqin 7 kun ichida to'lanishi kerak bo'lganlar
+  const upcoming = useMemo(() => {
+    const now = Date.now();
+    const week = now + 7 * 24 * 60 * 60 * 1000;
+
+    return payments
+      .filter((payment) => {
+        if (payment.status === "PAID") return false;
+        const due = new Date(payment.dueDate).getTime();
+        return due >= now && due <= week;
+      })
+      .reduce((sum, payment) => sum + Number(payment.amount), 0);
+  }, [payments]);
 
   return (
     <AppShell>
       <div className="px-5 py-6 sm:px-8 sm:py-8">
         <div className="mx-auto max-w-6xl">
-          <Topbar query={query} onQueryChange={setQuery} placeholder="Hisob raqami, loyiha yoki mijoz..." />
+          <Topbar
+            query={query}
+            onQueryChange={setQuery}
+            placeholder={t.payments.searchPlaceholder}
+          />
 
-          <div className="mb-5">
-            <h1 className="page-title">To&apos;lovlar</h1>
-            <p className="hint mt-1">
-              {loading ? "Yuklanmoqda..." : `${visible.length} ta yozuv`}
-            </p>
-          </div>
+          <PageHeader
+            title={t.nav.payments}
+            subtitle={
+              loading
+                ? t.common.loading
+                : fill(t.payments.count, { n: visible.length })
+            }
+          />
 
-          <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {cards.map((card) => (
-              <div key={card.label} className="card p-4">
-                <p className="hint mb-1">{card.label}</p>
-                <p className={`text-lg font-semibold tracking-tight ${card.tone}`}>
-                  {formatAmountShort(card.value)}
-                </p>
-              </div>
-            ))}
+          <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <StatCard
+              label={t.payments.totalPending}
+              value={formatAmountShort(totals.outstanding)}
+              tone={totals.outstanding > 0 ? "warning" : "neutral"}
+              icon={<Icon name="clock" className="h-4 w-4" />}
+            />
+            <StatCard
+              label={t.payments.totalPaid}
+              value={formatAmountShort(totals.paid)}
+              tone="success"
+              icon={<Icon name="check" className="h-4 w-4" />}
+            />
+            <StatCard
+              label={t.payments.overdue}
+              value={formatAmountShort(totals.overdue)}
+              tone={totals.overdue > 0 ? "danger" : "neutral"}
+              icon={<Icon name="alert" className="h-4 w-4" />}
+            />
+            <StatCard
+              label={t.payments.upcoming}
+              value={formatAmountShort(upcoming)}
+              icon={<Icon name="calendar" className="h-4 w-4" />}
+            />
           </div>
 
           {actionError && <div className="alert alert-danger mb-4">{actionError}</div>}
@@ -159,87 +203,147 @@ export default function PaymentsPage() {
                 onClick={() => setFilter(value)}
                 className={`btn btn-sm ${filter === value ? "btn-accent" : "btn-ghost"}`}
               >
-                {value === "ALL" ? "Hammasi" : paymentStatusLabels[value]}
+                {value === "ALL" ? t.common.all : t.status[value]}
               </button>
             ))}
           </div>
 
           <div className="card overflow-hidden">
             {loading ? (
-              <p className="hint p-6">Yuklanmoqda...</p>
+              <TableSkeleton rows={6} cols={5} />
             ) : loadError ? (
-              <p className="p-6 text-sm text-[var(--danger)]">{loadError}</p>
+              <EmptyState
+                icon={<Icon name="alert" />}
+                title={t.common.loadFailed}
+                text={loadError === "network" ? t.common.serverError : loadError}
+                action={
+                  <button onClick={reload} className="btn btn-ghost btn-sm">
+                    {t.common.retry}
+                  </button>
+                }
+              />
             ) : visible.length === 0 ? (
-              <div className="empty">
-                <div className="empty-icon text-[var(--faint)]">
-                  <Icon name="file" />
-                </div>
-                <p className="mb-1 font-medium">
-                  {payments.length === 0 ? "Hali to'lov yozuvi yo'q" : "Bu filtrga mos yozuv yo'q"}
-                </p>
-                <p className="hint">
-                  {payments.length === 0
-                    ? "To'lovlar loyiha sahifasi ichida qo'shiladi."
-                    : "Boshqa filtrni tanlang."}
-                </p>
-              </div>
+              <EmptyState
+                icon={<Icon name="payment" />}
+                title={
+                  payments.length === 0
+                    ? t.payments.emptyTitle
+                    : t.payments.filterEmpty
+                }
+                text={
+                  payments.length === 0
+                    ? t.payments.emptyText
+                    : t.payments.filterEmptyText
+                }
+              />
             ) : (
-              <div className="table-wrap">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Hisob</th>
-                      <th>Loyiha</th>
-                      <th>Mijoz</th>
-                      <th>Muddat</th>
-                      <th>Summa</th>
-                      <th>Holat</th>
-                      <th>Amal</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visible.map((payment) => (
-                      <tr key={payment.id}>
-                        <td className="whitespace-nowrap font-medium tabular-nums">
-                          #{payment.invoiceNo}
-                        </td>
-                        <td>
-                          <Link href={`/projects/${payment.projectId}`} className="link">
+              <>
+                {/* Desktop: jadval */}
+                <div className="table-wrap hidden md:block">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>{t.payments.colInvoice}</th>
+                        <th>{t.payments.colProject}</th>
+                        <th>{t.payments.colClient}</th>
+                        <th>{t.payments.colDue}</th>
+                        <th className="text-right">{t.payments.colAmount}</th>
+                        <th>{t.payments.colStatus}</th>
+                        <th className="text-right">{t.payments.colAction}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visible.map((payment) => (
+                        <tr key={payment.id}>
+                          <td className="whitespace-nowrap font-medium tabular-nums">
+                            #{payment.invoiceNo}
+                          </td>
+                          <td>
+                            <Link
+                              href={`/projects/${payment.projectId}`}
+                              className="link"
+                            >
+                              {payment.projectTitle}
+                            </Link>
+                          </td>
+                          <td className="text-[var(--muted)]">{payment.clientName}</td>
+                          <td className="whitespace-nowrap text-[var(--muted)]">
+                            {formatDate(payment.dueDate)}
+                          </td>
+                          <td className="whitespace-nowrap text-right font-medium tabular-nums">
+                            {formatAmount(payment.amount)}
+                          </td>
+                          <td>
+                            <span
+                              className={`badge ${paymentStatusBadges[payment.status]}`}
+                            >
+                              {t.status[payment.status]}
+                            </span>
+                          </td>
+                          <td className="text-right">
+                            <select
+                              value={payment.status}
+                              onChange={(e) => handleStatus(payment.id, e.target.value)}
+                              disabled={updatingId === payment.id}
+                              aria-label={`#${payment.invoiceNo} ${t.common.status}`}
+                              className="input w-auto py-1.5 text-sm"
+                            >
+                              {PAYMENT_STATUSES.map((value) => (
+                                <option key={value} value={value}>
+                                  {t.status[value]}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobil: kartalar */}
+                <ul className="divide-y divide-[var(--border)] md:hidden">
+                  {visible.map((payment) => (
+                    <li key={payment.id} className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <Link
+                            href={`/projects/${payment.projectId}`}
+                            className="link block truncate text-sm font-medium"
+                          >
                             {payment.projectTitle}
                           </Link>
-                        </td>
-                        <td className="text-[var(--muted)]">{payment.clientName}</td>
-                        <td className="whitespace-nowrap text-[var(--muted)]">
-                          {formatDate(payment.dueDate)}
-                        </td>
-                        <td className="whitespace-nowrap font-medium tabular-nums">
+                          <p className="truncate text-xs text-[var(--faint)]">
+                            #{payment.invoiceNo} · {payment.clientName}
+                          </p>
+                        </div>
+                        <span className="whitespace-nowrap text-sm font-medium tabular-nums">
                           {formatAmount(payment.amount)}
-                        </td>
-                        <td>
-                          <span className={`badge ${paymentStatusBadges[payment.status]}`}>
-                            {paymentStatusLabels[payment.status]}
-                          </span>
-                        </td>
-                        <td>
-                          <select
-                            value={payment.status}
-                            onChange={(e) => handleStatus(payment.id, e.target.value)}
-                            disabled={updatingId === payment.id}
-                            aria-label={`#${payment.invoiceNo} holati`}
-                            className="input w-auto py-1.5 text-sm"
-                          >
-                            {PAYMENT_STATUSES.map((v) => (
-                              <option key={v} value={v}>
-                                {paymentStatusLabels[v]}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        </span>
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <span className="text-xs text-[var(--muted)]">
+                          {formatDate(payment.dueDate)}
+                        </span>
+                        <select
+                          value={payment.status}
+                          onChange={(e) => handleStatus(payment.id, e.target.value)}
+                          disabled={updatingId === payment.id}
+                          aria-label={`#${payment.invoiceNo} ${t.common.status}`}
+                          className="input w-auto py-1.5 text-sm"
+                        >
+                          {PAYMENT_STATUSES.map((value) => (
+                            <option key={value} value={value}>
+                              {t.status[value]}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
           </div>
         </div>

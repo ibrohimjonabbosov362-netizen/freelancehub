@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 401 });
   }
 
-  const { clientId, title, status } = await request.json();
+  const { clientId, title, status, description, deadline } = await request.json();
 
   if (!clientId || !String(title ?? "").trim()) {
     return NextResponse.json(
@@ -64,11 +64,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Mijoz topilmadi" }, { status: 404 });
   }
 
+  // Sana noto'g'ri kelsa yozilmaydi — "Invalid Date" bazaga tushmasin
+  const parsedDeadline = deadline ? new Date(String(deadline)) : null;
+  const validDeadline =
+    parsedDeadline && !Number.isNaN(parsedDeadline.getTime()) ? parsedDeadline : null;
+
+  const trimmedDescription =
+    typeof description === "string" && description.trim()
+      ? description.trim().slice(0, 5000)
+      : null;
+
   const project = await prisma.project.create({
     data: {
-      title: String(title).trim(),
+      title: String(title).trim().slice(0, 200),
       clientId,
       userId,
+      description: trimmedDescription,
+      deadline: validDeadline,
       ...(status ? { status: status as ProjectStatus } : {}),
     },
     include: { client: true },

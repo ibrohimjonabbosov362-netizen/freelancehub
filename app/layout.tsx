@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Fraunces } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import Analytics from "./Analytics";
+import { getLocale } from "@/lib/i18n/server";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -68,17 +69,19 @@ export const viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+
   return (
-    <html lang="uz">
+    <html lang={locale}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} min-h-screen antialiased`}
       >
-        <Providers>{children}</Providers>
+        <Providers locale={locale}>{children}</Providers>
         <Analytics />
       </body>
     </html>

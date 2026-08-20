@@ -1,16 +1,29 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import AppShell from "../../AppShell";
 import Icon from "../../Icon";
+import {
+  Avatar,
+  EmptyState,
+  Modal,
+  Skeleton,
+  StatCard,
+  useToast,
+} from "../../components/ui";
+import { useI18n } from "@/lib/i18n/client";
+import { fill } from "@/lib/i18n/dictionaries";
 import { formatAmount, formatDate } from "@/lib/format";
 import {
+  CLIENT_STATUSES,
+  clientStatusBadges,
+  paymentStatusBadges,
   projectStatusBadges,
-  projectStatusLabels,
   proposalStatusBadges,
-  proposalStatusLabels,
+  type ClientStatus,
+  type PaymentStatus,
   type ProjectStatus,
   type ProposalStatus,
 } from "@/lib/statuses";
@@ -19,14 +32,23 @@ type Proposal = {
   id: string;
   title: string;
   amount: string;
-  status: string;
+  status: ProposalStatus;
   createdAt: string;
+};
+
+type Payment = {
+  id: string;
+  amount: string;
+  status: PaymentStatus;
+  dueDate: string;
 };
 
 type Project = {
   id: string;
   title: string;
-  status: string;
+  status: ProjectStatus;
+  deadline: string | null;
+  payments: Payment[];
 };
 
 type ClientDetail = {
@@ -34,6 +56,9 @@ type ClientDetail = {
   name: string;
   email: string;
   company: string | null;
+  phone: string | null;
+  notes: string | null;
+  status: ClientStatus;
   createdAt: string;
   proposals: Proposal[];
   projects: Project[];
@@ -53,6 +78,8 @@ export default function ClientDetailPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
+  const { t } = useI18n();
+  const toast = useToast();
 
   const [client, setClient] = useState<ClientDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,16 +88,20 @@ export default function ClientDetailPage() {
   const [actionError, setActionError] = useState("");
 
   const [editing, setEditing] = useState(false);
-  const [editName, setEditName] = useState("");
-  const [editEmail, setEditEmail] = useState("");
-  const [editCompany, setEditCompany] = useState("");
+  const [edit, setEdit] = useState({
+    name: "",
+    email: "",
+    company: "",
+    phone: "",
+    notes: "",
+    status: "ACTIVE" as ClientStatus,
+  });
   const [savingEdit, setSavingEdit] = useState(false);
 
-  // Shu mijoz uchun taklif yaratish
-  const [showForm, setShowForm] = useState(false);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState("");
+  const [proposalOpen, setProposalOpen] = useState(false);
+  const [proposal, setProposal] = useState({ title: "", description: "", amount: "" });
+  const [projectOpen, setProjectOpen] = useState(false);
+  const [project, setProject] = useState({ title: "", description: "", deadline: "" });
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
 
@@ -81,11 +112,8 @@ export default function ClientDetailPage() {
       const result = await fetchClient(id);
       if (cancelled) return;
 
-      if (result) {
-        setClient(result);
-      } else {
-        setNotFound(true);
-      }
+      if (result) setClient(result);
+      else setNotFound(true);
       setLoading(false);
     })();
 
@@ -99,44 +127,36 @@ export default function ClientDetailPage() {
     if (result) setClient(result);
   }
 
-  async function handleCreateProposal(e: React.FormEvent) {
-    e.preventDefault();
-    setFormError("");
-    setSubmitting(true);
+  const proposals = useMemo(() => client?.proposals ?? [], [client]);
+  const projects = useMemo(() => client?.projects ?? [], [client]);
 
-    try {
-      const res = await fetch("/api/proposals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId: id, title, description, amount }),
-      });
+  // Daromad va kutilayotgan summa mijozning barcha loyihalari bo'yicha yig'iladi
+  const totals = useMemo(() => {
+    let paid = 0;
+    let pending = 0;
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setFormError(data.error || "Taklifni saqlab bo'lmadi");
-        return;
+    for (const item of projects) {
+      for (const payment of item.payments ?? []) {
+        const amount = Number(payment.amount);
+        if (payment.status === "PAID") paid += amount;
+        else pending += amount;
       }
-
-      setTitle("");
-      setDescription("");
-      setAmount("");
-      setShowForm(false);
-      await reload();
-    } catch {
-      setFormError("Server bilan bog'lanishda xatolik");
-    } finally {
-      setSubmitting(false);
     }
-  }
 
-  const proposals = client?.proposals ?? [];
-  const projects = client?.projects ?? [];
+    return { paid, pending };
+  }, [projects]);
 
   function startEdit() {
     if (!client) return;
-    setEditName(client.name);
-    setEditEmail(client.email);
-    setEditCompany(client.company ?? "");
+
+    setEdit({
+      name: client.name,
+      email: client.email,
+      company: client.company ?? "",
+      phone: client.phone ?? "",
+      notes: client.notes ?? "",
+      status: client.status,
+    });
     setActionError("");
     setEditing(true);
   }
@@ -150,33 +170,91 @@ export default function ClientDetailPage() {
       const res = await fetch(`/api/clients/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: editName,
-          email: editEmail,
-          company: editCompany,
-        }),
+        body: JSON.stringify(edit),
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setActionError(data.error || "Saqlab bo'lmadi");
+        setActionError(data.error || t.common.genericError);
         return;
       }
 
       setEditing(false);
+      toast(t.common.updated);
       await reload();
     } catch {
-      setActionError("Server bilan bog'lanishda xatolik");
+      setActionError(t.common.serverError);
     } finally {
       setSavingEdit(false);
+    }
+  }
+
+  async function handleCreateProposal(e: React.FormEvent) {
+    e.preventDefault();
+    setFormError("");
+    setSubmitting(true);
+
+    try {
+      const res = await fetch("/api/proposals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId: id, ...proposal }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setFormError(data.error || t.common.genericError);
+        return;
+      }
+
+      setProposal({ title: "", description: "", amount: "" });
+      setProposalOpen(false);
+      toast(t.clients.proposalCreated);
+      await reload();
+    } catch {
+      setFormError(t.common.serverError);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleCreateProject(e: React.FormEvent) {
+    e.preventDefault();
+    setFormError("");
+    setSubmitting(true);
+
+    try {
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId: id, ...project }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setFormError(data.error || t.common.genericError);
+        return;
+      }
+
+      setProject({ title: "", description: "", deadline: "" });
+      setProjectOpen(false);
+      toast(t.clients.projectCreated);
+      await reload();
+    } catch {
+      setFormError(t.common.serverError);
+    } finally {
+      setSubmitting(false);
     }
   }
 
   async function handleDelete() {
     const warning =
       proposals.length > 0 || projects.length > 0
-        ? `Diqqat: bu mijoz bilan birga ${proposals.length} ta taklif va ${projects.length} ta loyiha (shartnoma va to'lovlari bilan) o'chadi. Davom etamizmi?`
-        : "Mijozni o'chirishga ishonchingiz komilmi?";
+        ? fill(t.clients.deleteWarning, {
+            p: proposals.length,
+            j: projects.length,
+          })
+        : t.clients.deleteConfirm;
 
     if (!confirm(warning)) return;
 
@@ -188,15 +266,16 @@ export default function ClientDetailPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setActionError(data.error || "Mijozni o'chirib bo'lmadi");
+        setActionError(data.error || t.common.genericError);
         setDeleting(false);
         return;
       }
 
+      toast(t.clients.clientDeleted);
       router.push("/clients");
       router.refresh();
     } catch {
-      setActionError("Server bilan bog'lanishda xatolik");
+      setActionError(t.common.serverError);
       setDeleting(false);
     }
   }
@@ -204,7 +283,23 @@ export default function ClientDetailPage() {
   if (loading) {
     return (
       <AppShell>
-        <p className="hint px-5 py-8 sm:px-8 sm:py-10">Yuklanmoqda...</p>
+        <div className="px-5 py-8 sm:px-8 sm:py-10">
+          <div className="mx-auto max-w-5xl space-y-5">
+            <div className="card flex items-center gap-4 p-6">
+              <Skeleton className="h-14 w-14 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-5 w-48" />
+                <Skeleton className="h-3 w-64" />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Skeleton className="h-24 rounded-2xl" />
+              <Skeleton className="h-24 rounded-2xl" />
+              <Skeleton className="h-24 rounded-2xl" />
+            </div>
+            <Skeleton className="h-64 rounded-2xl" />
+          </div>
+        </div>
       </AppShell>
     );
   }
@@ -213,14 +308,16 @@ export default function ClientDetailPage() {
     return (
       <AppShell>
         <div className="px-5 py-8 sm:px-8 sm:py-10">
-          <div className="empty card mx-auto max-w-md">
-            <div className="empty-icon text-[var(--faint)]">
-              <Icon name="search" />
-            </div>
-            <p className="mb-1 font-medium">Mijoz topilmadi</p>
-            <Link href="/clients" className="link mt-2 text-sm">
-              Mijozlar ro&apos;yxatiga qaytish
-            </Link>
+          <div className="card mx-auto max-w-md">
+            <EmptyState
+              icon={<Icon name="search" />}
+              title={t.clients.notFound}
+              action={
+                <Link href="/clients" className="btn btn-ghost btn-sm">
+                  {t.clients.back}
+                </Link>
+              }
+            />
           </div>
         </div>
       </AppShell>
@@ -229,242 +326,544 @@ export default function ClientDetailPage() {
 
   return (
     <AppShell>
-      <div className="px-5 py-8 sm:px-8 sm:py-10">
-        <div className="mx-auto max-w-4xl">
+      <div className="px-5 py-6 sm:px-8 sm:py-8">
+        <div className="mx-auto max-w-5xl">
           <Link href="/clients" className="link-muted text-sm">
-            ← Mijozlar ro&apos;yxatiga qaytish
+            ← {t.clients.back}
           </Link>
 
           {actionError && (
             <div className="alert alert-danger mt-4">{actionError}</div>
           )}
 
-          {/* Mijoz kartasi */}
-          <div className="card mb-6 mt-4 p-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-2)] text-lg font-semibold text-[var(--accent-2)]">
-                  {client.name.charAt(0).toUpperCase()}
-                </div>
+          {/* Profil sarlavhasi */}
+          <div className="card relative mb-5 mt-4 overflow-hidden p-6">
+            <div
+              className="pointer-events-none absolute inset-x-0 top-0 h-28 opacity-70"
+              style={{
+                background:
+                  "linear-gradient(140deg, rgba(139,92,246,0.18), transparent 65%)",
+              }}
+            />
+
+            <div className="relative flex flex-wrap items-start justify-between gap-4">
+              <div className="flex min-w-0 items-start gap-4">
+                <Avatar name={client.name} size="lg" />
                 <div className="min-w-0">
-                  <h1 className="text-xl font-semibold">{client.name}</h1>
-                  <a
-                    href={`mailto:${client.email}`}
-                    className="link-muted block text-sm"
-                  >
-                    {client.email}
-                  </a>
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <h1 className="truncate text-xl font-semibold tracking-tight">
+                      {client.name}
+                    </h1>
+                    <span className={`badge ${clientStatusBadges[client.status]}`}>
+                      {t.status[client.status]}
+                    </span>
+                  </div>
+
                   {client.company && (
-                    <p className="mt-0.5 text-sm text-[var(--faint)]">
+                    <p className="mt-1 flex items-center gap-1.5 text-sm text-[var(--muted)]">
+                      <Icon name="building" className="h-4 w-4" />
                       {client.company}
                     </p>
                   )}
+
+                  <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
+                    <a
+                      href={`mailto:${client.email}`}
+                      className="link-muted flex items-center gap-1.5"
+                    >
+                      <Icon name="mail" className="h-4 w-4" />
+                      {client.email}
+                    </a>
+                    {client.phone && (
+                      <a
+                        href={`tel:${client.phone.replace(/\s/g, "")}`}
+                        className="link-muted flex items-center gap-1.5"
+                      >
+                        <Icon name="phone" className="h-4 w-4" />
+                        {client.phone}
+                      </a>
+                    )}
+                    <span className="flex items-center gap-1.5 text-[var(--faint)]">
+                      <Icon name="calendar" className="h-4 w-4" />
+                      {t.clients.since}: {formatDate(client.createdAt)}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => {
+                    setFormError("");
+                    setProposalOpen(true);
+                  }}
+                  className="btn btn-accent btn-sm"
+                >
+                  <Icon name="plus" className="h-4 w-4" />
+                  {t.clients.newProposal}
+                </button>
+                <button
+                  onClick={() => {
+                    setFormError("");
+                    setProjectOpen(true);
+                  }}
+                  className="btn btn-ghost btn-sm"
+                >
+                  {t.clients.newProject}
+                </button>
                 <button onClick={startEdit} className="btn btn-ghost btn-sm">
-                  Tahrirlash
+                  {t.common.edit}
                 </button>
                 <button
                   onClick={handleDelete}
                   disabled={deleting}
                   className="btn btn-danger btn-sm"
                 >
-                  {deleting ? "O'chirilmoqda..." : "O'chirish"}
+                  {deleting ? t.common.deleting : t.common.delete}
                 </button>
               </div>
             </div>
+          </div>
 
-            {editing && (
-              <form
-                onSubmit={handleSaveEdit}
-                className="mt-5 space-y-4 rounded-xl bg-[var(--surface-2)] p-4"
-              >
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label htmlFor="e-name" className="label">Ism</label>
-                    <input
-                      id="e-name"
-                      type="text"
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      required
-                      className="input"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="e-email" className="label">Email</label>
-                    <input
-                      id="e-email"
-                      type="email"
-                      value={editEmail}
-                      onChange={(e) => setEditEmail(e.target.value)}
-                      required
-                      className="input"
-                    />
-                  </div>
-                </div>
+          {/* Ko'rsatkichlar */}
+          <div className="mb-5 grid gap-4 sm:grid-cols-3">
+            <StatCard
+              label={t.clients.totalRevenue}
+              value={formatAmount(totals.paid)}
+              tone="success"
+              icon={<Icon name="payment" className="h-4 w-4" />}
+            />
+            <StatCard
+              label={t.clients.pendingAmount}
+              value={formatAmount(totals.pending)}
+              tone={totals.pending > 0 ? "warning" : "neutral"}
+              icon={<Icon name="clock" className="h-4 w-4" />}
+            />
+            <StatCard
+              label={t.nav.projects}
+              value={projects.length}
+              hint={fill(t.clients.proposalsCount, { n: proposals.length })}
+              icon={<Icon name="folder" className="h-4 w-4" />}
+            />
+          </div>
 
-                <div>
-                  <label htmlFor="e-company" className="label">
-                    Kompaniya <span className="text-[var(--faint)]">(ixtiyoriy)</span>
-                  </label>
-                  <input
-                    id="e-company"
-                    type="text"
-                    value={editCompany}
-                    onChange={(e) => setEditCompany(e.target.value)}
-                    className="input"
-                  />
-                </div>
+          <div className="grid gap-5 lg:grid-cols-3">
+            <div className="space-y-5 lg:col-span-2">
+              {/* Loyihalar */}
+              <section className="card p-6">
+                <h2 className="section-title mb-4">{t.nav.projects}</h2>
 
-                <div className="flex gap-2">
-                  <button type="submit" disabled={savingEdit} className="btn btn-accent btn-sm">
-                    {savingEdit ? "Saqlanmoqda..." : "Saqlash"}
-                  </button>
+                {projects.length === 0 ? (
+                  <p className="hint">{t.clients.noProjects}</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {projects.map((item) => {
+                      const paid = (item.payments ?? [])
+                        .filter((p) => p.status === "PAID")
+                        .reduce((sum, p) => sum + Number(p.amount), 0);
+
+                      return (
+                        <li
+                          key={item.id}
+                          className="border-t border-[var(--border)] pt-3 first:border-0 first:pt-0"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <Link
+                                href={`/projects/${item.id}`}
+                                className="link block truncate text-sm font-medium"
+                              >
+                                {item.title}
+                              </Link>
+                              <p className="mt-0.5 text-xs text-[var(--faint)]">
+                                {paid > 0 ? formatAmount(paid) : "—"}
+                                {item.deadline && ` · ${formatDate(item.deadline)}`}
+                              </p>
+                            </div>
+                            <span className={`badge ${projectStatusBadges[item.status]}`}>
+                              {t.status[item.status]}
+                            </span>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </section>
+
+              {/* Takliflar */}
+              <section className="card p-6">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="section-title">{t.nav.proposals}</h2>
                   <button
-                    type="button"
-                    onClick={() => setEditing(false)}
+                    onClick={() => {
+                      setFormError("");
+                      setProposalOpen(true);
+                    }}
                     className="btn btn-ghost btn-sm"
                   >
-                    Bekor qilish
+                    <Icon name="plus" className="h-4 w-4" />
+                    {t.clients.newProposal}
                   </button>
                 </div>
-              </form>
-            )}
-          </div>
 
-          {/* Takliflar */}
-          <div className="card mb-6 p-6">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="section-title">Takliflar</h2>
-              <button
-                onClick={() => setShowForm(!showForm)}
-                className="btn btn-ghost btn-sm"
-              >
-                {showForm ? "Bekor qilish" : "+ Taklif yaratish"}
-              </button>
+                {proposals.length === 0 ? (
+                  <p className="hint">{t.clients.noProposals}</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {proposals.map((item) => (
+                      <li
+                        key={item.id}
+                        className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-3 first:border-0 first:pt-0"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{item.title}</p>
+                          <p className="text-xs text-[var(--faint)]">
+                            {formatAmount(item.amount)} · {formatDate(item.createdAt)}
+                          </p>
+                        </div>
+                        <span className={`badge ${proposalStatusBadges[item.status]}`}>
+                          {t.status[item.status]}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
             </div>
 
-            {showForm && (
-              <form
-                onSubmit={handleCreateProposal}
-                className="mb-5 space-y-4 rounded-xl bg-[var(--surface-2)] p-4"
-              >
-                {formError && <div className="alert alert-danger">{formError}</div>}
+            {/* Yon ustun: aloqa va izohlar */}
+            <div className="space-y-5">
+              <section className="card p-6">
+                <h2 className="section-title mb-4">{t.clients.contactInfo}</h2>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <dl className="space-y-3 text-sm">
                   <div>
-                    <label htmlFor="p-title" className="label">
-                      Sarlavha
-                    </label>
-                    <input
-                      id="p-title"
-                      type="text"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      required
-                      className="input"
-                      placeholder="Landing sayt"
-                    />
+                    <dt className="text-xs text-[var(--faint)]">{t.common.email}</dt>
+                    <dd className="mt-0.5 break-all">{client.email}</dd>
                   </div>
                   <div>
-                    <label htmlFor="p-amount" className="label">
-                      Summa (so&apos;m)
-                    </label>
-                    <input
-                      id="p-amount"
-                      type="number"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      required
-                      min="0"
-                      step="0.01"
-                      className="input"
-                    />
+                    <dt className="text-xs text-[var(--faint)]">{t.common.phone}</dt>
+                    <dd className="mt-0.5">
+                      {client.phone || (
+                        <span className="text-[var(--faint)]">{t.clients.noPhone}</span>
+                      )}
+                    </dd>
                   </div>
-                </div>
+                  <div>
+                    <dt className="text-xs text-[var(--faint)]">{t.common.company}</dt>
+                    <dd className="mt-0.5">
+                      {client.company || (
+                        <span className="text-[var(--faint)]">{t.common.none}</span>
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+              </section>
 
-                <div>
-                  <label htmlFor="p-desc" className="label">
-                    Tavsif <span className="text-[var(--faint)]">(ixtiyoriy)</span>
-                  </label>
-                  <textarea
-                    id="p-desc"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={3}
-                    className="input"
-                  />
-                </div>
+              <section className="card p-6">
+                <h2 className="section-title mb-3">{t.common.notes}</h2>
+                {client.notes ? (
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--muted)]">
+                    {client.notes}
+                  </p>
+                ) : (
+                  <p className="hint">{t.clients.noNotes}</p>
+                )}
+              </section>
 
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="btn btn-accent btn-sm"
-                >
-                  {submitting ? "Saqlanmoqda..." : "Saqlash"}
-                </button>
-              </form>
-            )}
+              {/* Yaqin to'lovlar */}
+              <section className="card p-6">
+                <h2 className="section-title mb-4">{t.nav.payments}</h2>
 
-            {proposals.length === 0 ? (
-              <p className="hint">Hali taklif yo&apos;q.</p>
-            ) : (
-              <ul className="space-y-3">
-                {proposals.map((p) => (
-                  <li
-                    key={p.id}
-                    className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-3 first:border-0 first:pt-0"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{p.title}</p>
-                      <p className="text-xs text-[var(--faint)]">
-                        {formatAmount(p.amount)} · {formatDate(p.createdAt)}
-                      </p>
-                    </div>
-                    <span className={`badge ${proposalStatusBadges[p.status as ProposalStatus]}`}>
-                      {proposalStatusLabels[p.status as ProposalStatus] || p.status}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {/* Loyihalar */}
-          <div className="card p-6">
-            <h2 className="section-title mb-4">Loyihalar</h2>
-
-            {projects.length === 0 ? (
-              <p className="hint">
-                Hali loyiha yo&apos;q. Taklif qabul qilinganda avtomatik
-                yaratiladi.
-              </p>
-            ) : (
-              <ul className="space-y-3">
-                {projects.map((p) => (
-                  <li
-                    key={p.id}
-                    className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-3 first:border-0 first:pt-0"
-                  >
-                    <Link
-                      href={`/projects/${p.id}`}
-                      className="link truncate text-sm"
-                    >
-                      {p.title}
-                    </Link>
-                    <span className={`badge ${projectStatusBadges[p.status as ProjectStatus]}`}>
-                      {projectStatusLabels[p.status as ProjectStatus] || p.status}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+                {projects.flatMap((p) => p.payments ?? []).length === 0 ? (
+                  <p className="hint">{t.dashboard.noPayments}</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {projects
+                      .flatMap((item) =>
+                        (item.payments ?? []).map((payment) => ({ ...payment, item }))
+                      )
+                      .slice(0, 6)
+                      .map((payment) => (
+                        <li
+                          key={payment.id}
+                          className="flex items-center justify-between gap-3 border-t border-[var(--border)] pt-3 first:border-0 first:pt-0"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm tabular-nums">
+                              {formatAmount(payment.amount)}
+                            </p>
+                            <p className="text-xs text-[var(--faint)]">
+                              {formatDate(payment.dueDate)}
+                            </p>
+                          </div>
+                          <span className={`badge ${paymentStatusBadges[payment.status]}`}>
+                            {t.status[payment.status]}
+                          </span>
+                        </li>
+                      ))}
+                  </ul>
+                )}
+              </section>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Tahrirlash */}
+      <Modal
+        open={editing}
+        onClose={() => setEditing(false)}
+        title={t.common.edit}
+        closeLabel={t.common.close}
+      >
+        <form onSubmit={handleSaveEdit} className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="e-name" className="label">
+                {t.common.name}
+              </label>
+              <input
+                id="e-name"
+                type="text"
+                value={edit.name}
+                onChange={(e) => setEdit({ ...edit, name: e.target.value })}
+                required
+                className="input"
+              />
+            </div>
+            <div>
+              <label htmlFor="e-email" className="label">
+                {t.common.email}
+              </label>
+              <input
+                id="e-email"
+                type="email"
+                value={edit.email}
+                onChange={(e) => setEdit({ ...edit, email: e.target.value })}
+                required
+                className="input"
+              />
+            </div>
+            <div>
+              <label htmlFor="e-company" className="label">
+                {t.common.company}
+              </label>
+              <input
+                id="e-company"
+                type="text"
+                value={edit.company}
+                onChange={(e) => setEdit({ ...edit, company: e.target.value })}
+                className="input"
+              />
+            </div>
+            <div>
+              <label htmlFor="e-phone" className="label">
+                {t.common.phone}
+              </label>
+              <input
+                id="e-phone"
+                type="tel"
+                value={edit.phone}
+                onChange={(e) => setEdit({ ...edit, phone: e.target.value })}
+                className="input"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="e-status" className="label">
+              {t.common.status}
+            </label>
+            <select
+              id="e-status"
+              value={edit.status}
+              onChange={(e) =>
+                setEdit({ ...edit, status: e.target.value as ClientStatus })
+              }
+              className="input"
+            >
+              {CLIENT_STATUSES.map((value) => (
+                <option key={value} value={value}>
+                  {t.status[value]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="e-notes" className="label">
+              {t.common.notes}
+            </label>
+            <textarea
+              id="e-notes"
+              rows={3}
+              value={edit.notes}
+              onChange={(e) => setEdit({ ...edit, notes: e.target.value })}
+              className="input"
+              placeholder={t.clients.notesPlaceholder}
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-1">
+            <button type="submit" disabled={savingEdit} className="btn btn-accent">
+              {savingEdit ? t.common.saving : t.common.save}
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              className="btn btn-ghost"
+            >
+              {t.common.cancel}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Yangi taklif */}
+      <Modal
+        open={proposalOpen}
+        onClose={() => setProposalOpen(false)}
+        title={t.clients.newProposal}
+        closeLabel={t.common.close}
+      >
+        <form onSubmit={handleCreateProposal} className="space-y-4">
+          {formError && <div className="alert alert-danger">{formError}</div>}
+
+          <div>
+            <label htmlFor="p-title" className="label">
+              {t.clients.proposalTitle}
+            </label>
+            <input
+              id="p-title"
+              type="text"
+              value={proposal.title}
+              onChange={(e) => setProposal({ ...proposal, title: e.target.value })}
+              required
+              autoFocus
+              className="input"
+              placeholder={t.clients.proposalTitlePlaceholder}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="p-amount" className="label">
+              {t.clients.proposalAmount}
+            </label>
+            <input
+              id="p-amount"
+              type="number"
+              value={proposal.amount}
+              onChange={(e) => setProposal({ ...proposal, amount: e.target.value })}
+              required
+              min="0"
+              step="0.01"
+              className="input"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="p-desc" className="label">
+              {t.clients.proposalDescription}{" "}
+              <span className="text-[var(--faint)]">({t.common.optional})</span>
+            </label>
+            <textarea
+              id="p-desc"
+              rows={3}
+              value={proposal.description}
+              onChange={(e) =>
+                setProposal({ ...proposal, description: e.target.value })
+              }
+              className="input"
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-1">
+            <button type="submit" disabled={submitting} className="btn btn-accent">
+              {submitting ? t.common.saving : t.common.save}
+            </button>
+            <button
+              type="button"
+              onClick={() => setProposalOpen(false)}
+              className="btn btn-ghost"
+            >
+              {t.common.cancel}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Yangi loyiha */}
+      <Modal
+        open={projectOpen}
+        onClose={() => setProjectOpen(false)}
+        title={t.clients.newProject}
+        closeLabel={t.common.close}
+      >
+        <form onSubmit={handleCreateProject} className="space-y-4">
+          {formError && <div className="alert alert-danger">{formError}</div>}
+
+          <div>
+            <label htmlFor="pr-title" className="label">
+              {t.clients.proposalTitle}
+            </label>
+            <input
+              id="pr-title"
+              type="text"
+              value={project.title}
+              onChange={(e) => setProject({ ...project, title: e.target.value })}
+              required
+              autoFocus
+              className="input"
+              placeholder={t.clients.projectTitlePlaceholder}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="pr-deadline" className="label">
+              {t.common.deadline}{" "}
+              <span className="text-[var(--faint)]">({t.common.optional})</span>
+            </label>
+            <input
+              id="pr-deadline"
+              type="date"
+              value={project.deadline}
+              onChange={(e) => setProject({ ...project, deadline: e.target.value })}
+              className="input"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="pr-desc" className="label">
+              {t.clients.proposalDescription}{" "}
+              <span className="text-[var(--faint)]">({t.common.optional})</span>
+            </label>
+            <textarea
+              id="pr-desc"
+              rows={3}
+              value={project.description}
+              onChange={(e) =>
+                setProject({ ...project, description: e.target.value })
+              }
+              className="input"
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-1">
+            <button type="submit" disabled={submitting} className="btn btn-accent">
+              {submitting ? t.common.saving : t.common.save}
+            </button>
+            <button
+              type="button"
+              onClick={() => setProjectOpen(false)}
+              className="btn btn-ghost"
+            >
+              {t.common.cancel}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </AppShell>
   );
 }
