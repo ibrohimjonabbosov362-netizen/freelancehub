@@ -33,6 +33,14 @@ Ilova: http://localhost:3000
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | yo'q | Bo'lmasa "Google orqali kirish" tugmasi ko'rinmaydi |
 | `RESEND_API_KEY` | yo'q | Parolni tiklash xatlari uchun ([resend.com](https://resend.com)) |
 | `MAIL_FROM` | yo'q | Jo'natuvchi, masalan `FreelanceHub <no-reply@domen.uz>` |
+
+> ✉️ **Pochta haqida:** `onboarding@resend.dev` — Resend'ning sinov manzili va
+> u **faqat Resend hisobingiz egasining emailiga** xat yetkazadi; boshqalarga
+> yuborilganda Resend 403 qaytaradi. Haqiqiy foydalanuvchilarga xat borishi uchun
+> [resend.com/domains](https://resend.com/domains) da domen tasdiqlang va
+> `MAIL_FROM` ni o'sha domendagi manzilga o'zgartiring. Kalit yoki `MAIL_FROM`
+> bo'lmasa `/forgot-password` sahifasi formani ko'rsatmaydi — "pochta sozlanmagan"
+> deb ochiq aytadi.
 | `NEXT_PUBLIC_GA_ID` | yo'q | Google Analytics (`G-...`); bo'lmasa skript yuklanmaydi |
 | `STRIPE_PRICE_ID_YEARLY` | yo'q | Yillik narx; berilmasa oylik/yillik almashtirgichi ko'rsatilmaydi |
 | `NEXT_PUBLIC_CURRENCY` | yo'q | `UZS` (standart), `USD` yoki `EUR` — butun ilova shu valyutada |

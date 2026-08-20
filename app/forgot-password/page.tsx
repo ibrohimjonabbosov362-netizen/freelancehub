@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import AuthLayout from "../components/AuthLayout";
 import { useI18n } from "@/lib/i18n/client";
@@ -10,8 +10,29 @@ export default function ForgotPasswordPage() {
 
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  // Pochta sozlanmagan bo'lsa forma o'rniga halol xabar ko'rsatamiz
+  const [mailReady, setMailReady] = useState(true);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/providers-status");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setMailReady(Boolean(data.passwordReset));
+      } catch {
+        // aniqlab bo'lmasa formani qoldiramiz
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -53,7 +74,23 @@ export default function ForgotPasswordPage() {
         </>
       }
     >
-      {sent ? (
+      {!mailReady ? (
+        <>
+          <div className="alert alert-danger">
+            <strong>{t.auth.mailOff}</strong>
+            <p className="mt-1.5">{t.auth.mailOffText}</p>
+            <a
+              href="mailto:ibrohimjonabbosov362@gmail.com"
+              className="link mt-1.5 inline-block"
+            >
+              ibrohimjonabbosov362@gmail.com
+            </a>
+          </div>
+          <Link href="/login" className="btn btn-ghost mt-5 w-full">
+            {t.auth.backToLogin}
+          </Link>
+        </>
+      ) : sent ? (
         <>
           <div className="alert alert-success">{t.auth.forgotSent}</div>
           <Link href="/login" className="btn btn-ghost mt-5 w-full">

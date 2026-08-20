@@ -360,6 +360,9 @@ const uz = {
     saving: "Saqlanmoqda...",
     savePassword: "Parolni saqlash",
     invalidLink: "Havola noto'g'ri yoki muddati tugagan.",
+    mailOff: "Pochta xizmati sozlanmagan",
+    mailOffText:
+      "Bu o'rnatmada tiklash havolasini yuborish yoqilmagan. Parolni tiklash uchun bizga yozing:",
   },
   contracts: {
     searchPlaceholder: "Loyiha yoki mijoz...",
@@ -806,6 +809,9 @@ const en: Dictionary = {
     saving: "Saving...",
     savePassword: "Save password",
     invalidLink: "This link is invalid or has expired.",
+    mailOff: "Email is not configured",
+    mailOffText:
+      "Sending reset links is not switched on for this installation. Write to us to reset your password:",
   },
   contracts: {
     searchPlaceholder: "Project or client...",
