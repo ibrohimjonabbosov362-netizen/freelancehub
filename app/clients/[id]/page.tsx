@@ -41,6 +41,7 @@ type Payment = {
   amount: string;
   status: PaymentStatus;
   dueDate: string;
+  paidAt: string | null;
 };
 
 type Project = {
@@ -179,7 +180,8 @@ export default function ClientDetailPage() {
             text: fill(t.dashboard.activityPayment, {
               amount: formatAmount(payment.amount),
             }),
-            at: payment.dueDate,
+            // To'lov qabul qilingan sana; yozilmagan bo'lsa muddatga qaytamiz
+            at: payment.paidAt ?? payment.dueDate,
           }))
       ),
     ]

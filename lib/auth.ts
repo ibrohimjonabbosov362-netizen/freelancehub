@@ -16,7 +16,11 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60,
   },
-  useSecureCookies: process.env.NODE_ENV === "production",
+  // Cookie prefiksi HTTPS'ga qarab tanlanadi, NODE_ENV'ga emas. Aks holda
+  // http orqali xizmat qilinayotgan production build'da NextAuth "__Secure-"
+  // cookie yozadi-yu, proxy (middleware) uni topa olmay har safar /login ga
+  // qaytaradi — kirish ishlamay qoladi.
+  useSecureCookies: (process.env.NEXTAUTH_URL ?? "").startsWith("https://"),
   pages: {
     signIn: "/login",
   },
