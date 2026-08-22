@@ -87,6 +87,11 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} min-h-screen antialiased`}
       >
+        {/* JS o'chirilgan bo'lsa, Framer Motion'ning boshlang'ich opacity:0 holati
+            butunlay ko'rinmas bo'lib qolmasin (hero, scroll-reveal bloklari). */}
+        <noscript>
+          <style>{`[data-reveal]{opacity:1!important;transform:none!important;box-shadow:none!important}`}</style>
+        </noscript>
         <Providers locale={locale}>{children}</Providers>
         <Analytics />
       </body>

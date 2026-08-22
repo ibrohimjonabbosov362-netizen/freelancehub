@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import Link from "next/link";
 import LocaleSwitcher from "../LocaleSwitcher";
 import CtaLink from "./motion/CtaLink";
@@ -28,17 +27,17 @@ export default function SiteHeader() {
   ];
 
   return (
-    <motion.header
-      className="sticky top-0 z-40 border-b border-[var(--border)] backdrop-blur-md"
-      animate={{
-        // Dizayn to'q fon ustida qurilgan — "oq"ning muqobili sifatida
-        // to'q elevated sirt (--surface) ishlatildi, effekt xuddi shu: shaffofdan solidga.
-        backgroundColor: scrolled ? "rgba(15,16,19,0.9)" : "rgba(15,16,19,0)",
+    <header
+      className="sticky top-0 z-40 border-b border-[var(--border)] backdrop-blur-md transition-[background-color,box-shadow] duration-[250ms] ease-out"
+      style={{
+        // --surface orqali animatsiyalanadi, shunda rang shu tokendan chetga chiqmaydi.
+        backgroundColor: scrolled
+          ? "color-mix(in srgb, var(--surface) 90%, transparent)"
+          : "transparent",
         boxShadow: scrolled
           ? "0 4px 24px -8px rgba(0,0,0,0.35)"
           : "0 0 0 0 rgba(0,0,0,0)",
       }}
-      transition={{ type: "tween", duration: 0.25, ease: "easeOut" }}
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3.5 sm:px-8">
         <Link href="/" className="brand text-lg font-semibold tracking-tight">
@@ -93,6 +92,6 @@ export default function SiteHeader() {
           </nav>
         </div>
       )}
-    </motion.header>
+    </header>
   );
 }

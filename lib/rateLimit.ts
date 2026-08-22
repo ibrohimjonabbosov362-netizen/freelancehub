@@ -39,3 +39,21 @@ export function clientIp(request: Request): string {
   if (forwarded) return forwarded.split(",")[0].trim();
   return request.headers.get("x-real-ip") ?? "unknown";
 }
+
+/**
+ * NextAuth'ning authorize(credentials, req) callback'iga keladigan `req.headers`
+ * oddiy obyekt (Fetch API Headers emas), shuning uchun clientIp() ishlamaydi —
+ * shu yerda xuddi shu mantiq oddiy obyekt uchun takrorlanadi.
+ */
+export function clientIpFromHeaders(headers: Record<string, unknown> | undefined): string {
+  if (!headers) return "unknown";
+
+  const pick = (key: string): string | undefined => {
+    const value = headers[key] ?? headers[key.toLowerCase()] ?? headers[key.toUpperCase()];
+    return Array.isArray(value) ? value[0] : typeof value === "string" ? value : undefined;
+  };
+
+  const forwarded = pick("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0].trim();
+  return pick("x-real-ip") ?? "unknown";
+}

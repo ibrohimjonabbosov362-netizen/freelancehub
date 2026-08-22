@@ -1,12 +1,13 @@
 import Link from "next/link";
 import ContentLayout from "../components/ContentLayout";
 import { getDictionary, getLocale } from "@/lib/i18n/server";
+import { pageMetadata } from "@/lib/seo";
 
 export async function generateMetadata() {
   const locale = await getLocale();
   return locale === "en"
-    ? { title: "Help", description: "Getting started with FreelanceHub and answers to common questions." }
-    : { title: "Yordam", description: "FreelanceHub bilan ishni boshlash va tez-tez uchraydigan savollar." };
+    ? pageMetadata("/help", "Help", "Getting started with FreelanceHub and answers to common questions.")
+    : pageMetadata("/help", "Yordam", "FreelanceHub bilan ishni boshlash va tez-tez uchraydigan savollar.");
 }
 
 export default async function HelpPage() {

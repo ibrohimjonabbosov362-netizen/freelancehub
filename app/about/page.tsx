@@ -1,20 +1,21 @@
 import Link from "next/link";
 import ContentLayout from "../components/ContentLayout";
 import { getDictionary, getLocale } from "@/lib/i18n/server";
+import { pageMetadata } from "@/lib/seo";
 
 export async function generateMetadata() {
   const locale = await getLocale();
   return locale === "en"
-    ? {
-        title: "About",
-        description:
-          "FreelanceHub is a workspace for freelancers: clients, proposals, projects, contracts and payments in one place.",
-      }
-    : {
-        title: "Loyiha haqida",
-        description:
-          "FreelanceHub — frilanserlar uchun ish maydoni: mijozlar, takliflar, loyihalar, shartnomalar va to'lovlar bitta joyda.",
-      };
+    ? pageMetadata(
+        "/about",
+        "About",
+        "FreelanceHub is a workspace for freelancers: clients, proposals, projects, contracts and payments in one place."
+      )
+    : pageMetadata(
+        "/about",
+        "Loyiha haqida",
+        "FreelanceHub — frilanserlar uchun ish maydoni: mijozlar, takliflar, loyihalar, shartnomalar va to'lovlar bitta joyda."
+      );
 }
 
 export default async function AboutPage() {

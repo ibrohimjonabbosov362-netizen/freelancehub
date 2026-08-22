@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getCurrentUserId } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rateLimit";
 
 export async function GET() {
   const userId = await getCurrentUserId();
@@ -75,7 +76,14 @@ export async function PATCH(request: Request) {
       );
     }
 
-    // Sessiya o'g'irlangan bo'lsa ham parolni almashtirib bo'lmasin
+    // Sessiya o'g'irlangan bo'lsa ham joriy parolni cheksiz sinab bo'lmasin
+    if (!rateLimit(`change-password:${userId}`, 5, 15 * 60 * 1000).ok) {
+      return NextResponse.json(
+        { error: "Juda ko'p urinish. Birozdan so'ng qayta urinib ko'ring." },
+        { status: 429 }
+      );
+    }
+
     const valid = await bcrypt.compare(String(currentPassword ?? ""), user.password);
 
     if (!valid) {

@@ -262,7 +262,7 @@ export default async function HomePage() {
 
           <ScrollRevealGroup className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((feature, i) => (
-              <ScrollRevealItem key={feature.title} className="card p-6">
+              <ScrollRevealItem key={feature.title} className="card card-hover p-6">
                 <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-2)] text-[var(--accent-soft)]">
                   <Icon d={featureIcons[i]} />
                 </div>

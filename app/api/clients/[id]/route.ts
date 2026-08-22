@@ -1,14 +1,9 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { syncOverduePayments } from "@/lib/payments";
 import { CLIENT_STATUSES, type ClientStatus } from "@/lib/statuses";
-
-/** Bo'sh satrni null ga aylantiradi — bazada "" saqlanmasin */
-function optionalText(value: unknown, max = 500): string | null {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  return trimmed ? trimmed.slice(0, max) : null;
-}
+import { optionalText } from "@/lib/validation";
 
 export async function GET(
   request: Request,
@@ -20,6 +15,8 @@ export async function GET(
     return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 401 });
   }
   const { id } = await params;
+
+  await syncOverduePayments(userId);
 
   const client = await prisma.client.findFirst({
     where: { id, userId },

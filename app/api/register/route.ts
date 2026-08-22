@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 
@@ -50,6 +51,15 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ id: user.id, name: user.name, email: user.email }, { status: 201 });
   } catch (error) {
+    // Ikki so'rov bir vaqtda kelsa, ikkalasi ham findUnique tekshiruvidan o'tishi
+    // mumkin — bazadagi unique constraint shu yerda ikkinchisini to'xtatadi.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return NextResponse.json({ error: "Bu email bilan foydalanuvchi allaqachon mavjud" }, { status: 409 });
+    }
+
     console.error("Register error:", error);
     return NextResponse.json({ error: "Server xatosi, keyinroq urinib ko'ring" }, { status: 500 });
   }

@@ -1,9 +1,11 @@
 import LegalLayout from "../LegalLayout";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Foydalanish shartlari",
-  description: "FreelanceHub xizmatidan foydalanish qoidalari.",
-};
+export const metadata = pageMetadata(
+  "/terms",
+  "Foydalanish shartlari",
+  "FreelanceHub xizmatidan foydalanish qoidalari."
+);
 
 export default function TermsPage() {
   return (

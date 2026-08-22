@@ -76,6 +76,13 @@ const uz = {
     closeMenu: "Menyuni yopish",
     more: "Yana",
   },
+  topbar: {
+    searchLabel: "Qidirish",
+    paymentsAlert: "{count} ta to'lov e'tibor talab qiladi",
+    overdueAlert: "{count} ta to'lov muddati o'tgan",
+    dueSoonAlert: "{count} ta to'lov muddati yaqin",
+    noNewAlerts: "Yangi bildirishnoma yo'q",
+  },
   landing: {
     heroTitle: "Frilanser biznesingizni yuriting.",
     heroTitleAccent: "Mijozdan to'lovgacha.",
@@ -302,12 +309,15 @@ const uz = {
     period: "To'lov davri",
     monthly: "Oylik",
     yearly: "Yillik",
+    perMonth: "/ oy",
+    billedYearly: "yiliga {amount} sifatida hisoblanadi",
     notConfigured:
       "To'lov tizimi hozircha sozlanmagan. Premium'ni yoqish uchun STRIPE_SECRET_KEY va STRIPE_PRICE_ID muhit o'zgaruvchilarini to'ldiring.",
     upgradeTitle: "Premium'ga o'ting",
     manage: "Obunani boshqarish",
     opening: "Ochilmoqda...",
     redirecting: "Yo'naltirilmoqda...",
+    checkoutFailed: "To'lovni boshlab bo'lmadi",
     paidNotice:
       "To'lov qabul qilindi. Tarif hali yangilanmagan bo'lsa, bir necha soniyadan so'ng sahifani yangilang — tasdiq Stripe'dan keladi.",
     loadFailed: "Tarif ma'lumotini yuklab bo'lmadi",
@@ -340,6 +350,8 @@ const uz = {
     signUp: "Ro'yxatdan o'tish",
     signingUp: "Yaratilmoqda...",
     invalidCredentials: "Email yoki parol noto'g'ri",
+    oauthAccountNotLinked:
+      "Bu email allaqachon parol bilan ro'yxatdan o'tgan. Google o'rniga parolingiz bilan kiring, yoki parolni unutgan bo'lsangiz tiklang.",
     noAccount: "Hisobingiz yo'qmi?",
     haveAccount: "Hisobingiz bormi?",
     namePlaceholder: "Ismingiz",
@@ -524,6 +536,13 @@ const en: Dictionary = {
     openMenu: "Open menu",
     closeMenu: "Close menu",
     more: "More",
+  },
+  topbar: {
+    searchLabel: "Search",
+    paymentsAlert: "{count} payments need attention",
+    overdueAlert: "{count} overdue payments",
+    dueSoonAlert: "{count} payments due soon",
+    noNewAlerts: "No new notifications",
   },
   landing: {
     heroTitle: "Run your freelance business.",
@@ -751,12 +770,15 @@ const en: Dictionary = {
     period: "Billing period",
     monthly: "Monthly",
     yearly: "Yearly",
+    perMonth: "/ month",
+    billedYearly: "billed annually as {amount}",
     notConfigured:
       "Payments are not configured yet. Set the STRIPE_SECRET_KEY and STRIPE_PRICE_ID environment variables to enable Premium.",
     upgradeTitle: "Upgrade to Premium",
     manage: "Manage subscription",
     opening: "Opening...",
     redirecting: "Redirecting...",
+    checkoutFailed: "Could not start checkout",
     paidNotice:
       "Payment received. If your plan has not updated yet, refresh in a few seconds — confirmation comes from Stripe.",
     loadFailed: "Could not load your plan",
@@ -789,6 +811,8 @@ const en: Dictionary = {
     signUp: "Create account",
     signingUp: "Creating...",
     invalidCredentials: "Wrong email or password",
+    oauthAccountNotLinked:
+      "An account with this email already uses a password. Sign in with your password instead, or reset it if you forgot.",
     noAccount: "No account yet?",
     haveAccount: "Already have an account?",
     namePlaceholder: "Your name",

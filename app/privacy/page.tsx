@@ -1,9 +1,11 @@
 import LegalLayout from "../LegalLayout";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Maxfiylik siyosati",
-  description: "FreelanceHub qanday ma'lumot to'playdi va uni qanday himoya qiladi.",
-};
+export const metadata = pageMetadata(
+  "/privacy",
+  "Maxfiylik siyosati",
+  "FreelanceHub qanday ma'lumot to'playdi va uni qanday himoya qiladi."
+);
 
 export default function PrivacyPage() {
   return (

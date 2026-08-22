@@ -5,12 +5,20 @@ import { getCurrentUserId } from "@/lib/session";
 import { syncOverduePayments } from "@/lib/payments";
 import { getPlanInfo } from "@/lib/subscription";
 import { prisma } from "@/lib/prisma";
-import { getDictionary } from "@/lib/i18n/server";
+import { getDictionary, getLocale } from "@/lib/i18n/server";
+import { pageMetadata } from "@/lib/seo";
 import type { PaymentStatus, ProjectStatus } from "@/lib/statuses";
 
 export async function generateMetadata() {
-  const t = await getDictionary();
-  return { title: t.nav.dashboard };
+  const [t, locale] = await Promise.all([getDictionary(), getLocale()]);
+  return pageMetadata(
+    "/dashboard",
+    t.nav.dashboard,
+    locale === "en"
+      ? "See your freelance business performance at a glance."
+      : "Biznesingiz holatini bir qarashda ko'ring.",
+    { index: false }
+  );
 }
 
 function trendPercent(weeks: number[]): number | null {

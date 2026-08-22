@@ -1,12 +1,13 @@
 import Link from "next/link";
 import ContentLayout from "../components/ContentLayout";
 import { getDictionary, getLocale } from "@/lib/i18n/server";
+import { pageMetadata } from "@/lib/seo";
 
 export async function generateMetadata() {
   const locale = await getLocale();
   return locale === "en"
-    ? { title: "Documentation", description: "How every part of FreelanceHub works, section by section." }
-    : { title: "Hujjatlar", description: "FreelanceHub'ning har bir bo'limi qanday ishlashi." };
+    ? pageMetadata("/docs", "Documentation", "How every part of FreelanceHub works, section by section.")
+    : pageMetadata("/docs", "Hujjatlar", "FreelanceHub'ning har bir bo'limi qanday ishlashi.");
 }
 
 export default async function DocsPage() {

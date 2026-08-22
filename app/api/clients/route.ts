@@ -1,20 +1,15 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { getCurrentUserId } from "@/lib/session";
 import { FREE_CLIENT_LIMIT, getPlanInfo } from "@/lib/subscription";
 import { prisma } from "@/lib/prisma";
 import { CLIENT_STATUSES, type ClientStatus } from "@/lib/statuses";
+import { optionalText } from "@/lib/validation";
 
 function parseStatus(value: unknown): ClientStatus {
   return CLIENT_STATUSES.includes(value as ClientStatus)
     ? (value as ClientStatus)
     : "ACTIVE";
-}
-
-/** Bo'sh satrni null ga aylantiradi — bazada "" saqlanmasin */
-function optionalText(value: unknown, max = 500): string | null {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  return trimmed ? trimmed.slice(0, max) : null;
 }
 
 export async function GET() {
@@ -89,33 +84,50 @@ export async function POST(request: Request) {
     );
   }
 
-  const [{ isPremium }, clientCount] = await Promise.all([
-    getPlanInfo(userId),
-    prisma.client.count({ where: { userId } }),
-  ]);
+  const { isPremium } = await getPlanInfo(userId);
 
-  if (!isPremium && clientCount >= FREE_CLIENT_LIMIT) {
-    return NextResponse.json(
-      {
-        error: `Bepul tarifda ${FREE_CLIENT_LIMIT} tadan ortiq mijoz qo'sha olmaysiz. Premium'ga o'ting.`,
-        code: "FREE_LIMIT",
-        limit: FREE_CLIENT_LIMIT,
-      },
-      { status: 403 }
-    );
-  }
-
-  const client = await prisma.client.create({
-    data: {
-      name: String(name).trim().slice(0, 120),
-      email: normalizedEmail,
-      company: optionalText(company, 120),
-      phone: optionalText(phone, 40),
-      notes: optionalText(notes, 2000),
-      status: parseStatus(status),
-      userId,
+  const limitError = NextResponse.json(
+    {
+      error: `Bepul tarifda ${FREE_CLIENT_LIMIT} tadan ortiq mijoz qo'sha olmaysiz. Premium'ga o'ting.`,
+      code: "FREE_LIMIT",
+      limit: FREE_CLIENT_LIMIT,
     },
-  });
+    { status: 403 }
+  );
 
-  return NextResponse.json(client, { status: 201 });
+  try {
+    // Hisoblash va yaratish bitta serializable tranzaksiyada — bepul tarifda
+    // ikki so'rov bir vaqtda kelsa ham, mijoz chegarasidan oshib ketmasin.
+    const client = await prisma.$transaction(
+      async (tx) => {
+        if (!isPremium) {
+          const clientCount = await tx.client.count({ where: { userId } });
+          if (clientCount >= FREE_CLIENT_LIMIT) return null;
+        }
+
+        return tx.client.create({
+          data: {
+            name: String(name).trim().slice(0, 120),
+            email: normalizedEmail,
+            company: optionalText(company, 120),
+            phone: optionalText(phone, 40),
+            notes: optionalText(notes, 2000),
+            status: parseStatus(status),
+            userId,
+          },
+        });
+      },
+      isPremium ? undefined : { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
+
+    if (!client) return limitError;
+    return NextResponse.json(client, { status: 201 });
+  } catch (error) {
+    // P2034: Postgres serializable tranzaksiya to'qnashuvi — juda kamdan-kam,
+    // faqat aynan bir vaqtda ikkita so'rov chegaraga tegib turganda yuz beradi.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034") {
+      return limitError;
+    }
+    throw error;
+  }
 }

@@ -16,7 +16,14 @@ function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  // Google orqali kirishda NextAuth xatolikni ?error= bilan shu sahifaga qaytaradi —
+  // bu render paytida darhol o'qiladi, useEffect ichida setState chaqirish shart emas.
+  const [error, setError] = useState(() => {
+    const code = searchParams.get("error");
+    if (code === "OAuthAccountNotLinked") return t.auth.oauthAccountNotLinked;
+    if (code) return t.auth.invalidCredentials;
+    return "";
+  });
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import Topbar from "../Topbar";
 import Icon from "../Icon";
@@ -86,9 +86,25 @@ const ACTIVITY_ICONS: Record<DashboardData["activity"][number]["kind"], string> 
 
 export default function DashboardView({ data }: { data: DashboardData }) {
   const { t } = useI18n();
+  const [query, setQuery] = useState("");
 
   // Serverda neytral matn, brauzerda vaqtga qarab — hidratsiya buzilmasin
   const bucket = useSyncExternalStore(subscribeNever, hourBucket, () => null);
+
+  // Topbar qidiruvi shu sahifadagi so'nggi loyihalar/mijozlar ro'yxatini filtrlaydi
+  const q = query.trim().toLowerCase();
+  const filteredProjects = q
+    ? data.projects.filter(
+        (p) => p.title.toLowerCase().includes(q) || p.clientName.toLowerCase().includes(q)
+      )
+    : data.projects;
+  const filteredClients = q
+    ? data.clients.filter((c) =>
+        [c.name, c.company, c.email, c.projectTitle]
+          .filter(Boolean)
+          .some((field) => field!.toLowerCase().includes(q))
+      )
+    : data.clients;
 
   const greeting =
     bucket === "morning"
@@ -122,7 +138,7 @@ export default function DashboardView({ data }: { data: DashboardData }) {
   return (
     <div className="px-5 py-6 sm:px-8 sm:py-8">
       <div className="mx-auto max-w-6xl">
-        <Topbar />
+        <Topbar query={query} onQueryChange={setQuery} />
 
         {/* Salomlashuv */}
         <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
@@ -252,9 +268,11 @@ export default function DashboardView({ data }: { data: DashboardData }) {
 
             {data.projects.length === 0 ? (
               <p className="hint">{t.dashboard.noProjects}</p>
+            ) : filteredProjects.length === 0 ? (
+              <p className="hint">{t.common.noResults}</p>
             ) : (
               <ul className="space-y-3.5">
-                {data.projects.map((project) => {
+                {filteredProjects.map((project) => {
                   const percent =
                     project.total > 0
                       ? Math.min(
@@ -356,9 +374,11 @@ export default function DashboardView({ data }: { data: DashboardData }) {
 
             {data.clients.length === 0 ? (
               <p className="hint">{t.dashboard.noClients}</p>
+            ) : filteredClients.length === 0 ? (
+              <p className="hint">{t.common.noResults}</p>
             ) : (
               <ul className="space-y-3.5">
-                {data.clients.map((client) => (
+                {filteredClients.map((client) => (
                   <li
                     key={client.id}
                     className="flex items-center gap-3 border-t border-[var(--border)] pt-3.5 first:border-0 first:pt-0"

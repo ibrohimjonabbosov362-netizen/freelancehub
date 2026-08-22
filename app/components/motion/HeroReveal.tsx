@@ -1,13 +1,7 @@
 "use client";
 
-import { motion, type Variants } from "framer-motion";
-
-// Faqat hero mount bo'lganda bir marta ishlaydi (whileInView emas) —
-// stagger farqi 0.15s, har bir element 0.5s ease-out bilan pastdan chiqadi.
-const group: Variants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.15 } },
-};
+import { motion, useReducedMotion, type Variants } from "framer-motion";
+import { staggerGroup } from "./variants";
 
 const item: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -19,8 +13,16 @@ const item: Variants = {
 };
 
 export function HeroRevealGroup({ children }: { children: React.ReactNode }) {
+  // reduceMotion is null on the server/first paint, so SSR always renders "hidden" —
+  // the noscript fallback in layout.tsx keeps content visible if JS never runs.
+  const reduceMotion = useReducedMotion();
   return (
-    <motion.div variants={group} initial="hidden" animate="show">
+    <motion.div
+      variants={staggerGroup}
+      initial={reduceMotion ? false : "hidden"}
+      animate="show"
+      data-reveal
+    >
       {children}
     </motion.div>
   );
@@ -34,7 +36,7 @@ export function HeroRevealItem({
   className?: string;
 }) {
   return (
-    <motion.div variants={item} className={className}>
+    <motion.div variants={item} className={className} data-reveal>
       {children}
     </motion.div>
   );

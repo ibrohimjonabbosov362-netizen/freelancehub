@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { useI18n } from "@/lib/i18n/client";
+import { fill } from "@/lib/i18n/dictionaries";
 
 function initials(name?: string | null) {
   if (!name) return "?";
@@ -17,12 +19,13 @@ function initials(name?: string | null) {
 export default function Topbar({
   query,
   onQueryChange,
-  placeholder = "Qidirish...",
+  placeholder,
 }: {
   query?: string;
   onQueryChange?: (value: string) => void;
   placeholder?: string;
 }) {
+  const { t } = useI18n();
   const { data: session } = useSession();
   const [time, setTime] = useState("");
   const [alerts, setAlerts] = useState({ overdue: 0, dueSoon: 0, total: 0 });
@@ -79,8 +82,8 @@ export default function Topbar({
           value={query ?? ""}
           onChange={(e) => onQueryChange?.(e.target.value)}
           disabled={!onQueryChange}
-          placeholder={placeholder}
-          aria-label="Qidirish"
+          placeholder={placeholder ?? t.common.search}
+          aria-label={t.topbar.searchLabel}
           className="input py-2 pl-9 text-sm disabled:opacity-60"
         />
       </div>
@@ -90,15 +93,15 @@ export default function Topbar({
           href="/payments"
           aria-label={
             alerts.total > 0
-              ? `${alerts.total} ta to'lov e'tibor talab qiladi`
-              : "To'lovlar"
+              ? fill(t.topbar.paymentsAlert, { count: alerts.total })
+              : t.nav.payments
           }
           title={
             alerts.overdue > 0
-              ? `${alerts.overdue} ta to'lov muddati o'tgan`
+              ? fill(t.topbar.overdueAlert, { count: alerts.overdue })
               : alerts.dueSoon > 0
-                ? `${alerts.dueSoon} ta to'lov muddati yaqin`
-                : "Yangi bildirishnoma yo'q"
+                ? fill(t.topbar.dueSoonAlert, { count: alerts.dueSoon })
+                : t.topbar.noNewAlerts
           }
           className="relative flex h-9 w-9 items-center justify-center rounded-xl text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--ink)]"
         >
