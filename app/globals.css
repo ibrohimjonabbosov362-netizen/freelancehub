@@ -96,6 +96,31 @@ code, pre, kbd, samp {
     color: transparent;
   }
 
+  /* Tipografiya shkalasi — page-title (~h1) va section-title (~h2) allaqachon
+     mavjud va butun ilova bo'ylab ishlatiladi, ularni almashtirmaymiz.
+     Bu klasslar shkaladagi qolgan bo'shliqlarni to'ldiradi. */
+  .text-display {
+    @apply text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl;
+    font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  }
+
+  .text-h3 {
+    @apply text-xl font-semibold tracking-tight;
+  }
+
+  .text-h4 {
+    @apply text-base font-semibold;
+  }
+
+  .text-body-lg {
+    @apply text-lg leading-relaxed;
+  }
+
+  .text-caption {
+    color: var(--faint);
+    @apply text-xs;
+  }
+
   .page-title {
     @apply text-2xl font-semibold tracking-tight;
   }
@@ -163,6 +188,16 @@ code, pre, kbd, samp {
   .btn-danger:hover:not(:disabled) {
     background: var(--danger-dim);
     border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+  }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--border-strong);
+  }
+  .btn-outline:hover:not(:disabled) {
+    background: var(--surface-2);
+    border-color: var(--accent-2);
   }
 
   .btn-sm { @apply px-3 py-1.5 text-sm rounded-lg; }
