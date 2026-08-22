@@ -10,7 +10,9 @@
 
   --ink: #f4f4f5;
   --muted: #9b9ba4;
-  --faint: #6b6b76;
+  /* WCAG AA (4.5:1) o'tishi uchun yorug'lashtirildi — avvalgi #6b6b76 kichik
+     matnlarda (badge, timestamp, caption) 3.4:1 gacha tushib qolar edi. */
+  --faint: #7f7f8a;
 
   --border: #1f2026;
   --border-strong: #2c2e36;
