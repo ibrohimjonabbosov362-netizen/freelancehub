@@ -7,7 +7,7 @@ import { clientIp, rateLimit } from "@/lib/rateLimit";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  if (!rateLimit(`reset:${clientIp(request)}`, 10, 15 * 60 * 1000).ok) {
+  if (!(await rateLimit(`reset:${clientIp(request)}`, 10, 15 * 60 * 1000)).ok) {
     return NextResponse.json({ error: "Juda ko'p urinish." }, { status: 429 });
   }
 

@@ -6,7 +6,7 @@ import { clientIp, rateLimit } from "@/lib/rateLimit";
 
 export async function POST(request: Request) {
   // Bitta IP soatiga 5 tadan ortiq hisob ocholmasin
-  const limit = rateLimit(`register:${clientIp(request)}`, 5, 60 * 60 * 1000);
+  const limit = await rateLimit(`register:${clientIp(request)}`, 5, 60 * 60 * 1000);
 
   if (!limit.ok) {
     return NextResponse.json(

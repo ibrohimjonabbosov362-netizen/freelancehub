@@ -35,7 +35,11 @@ if (process.env.QA_CONFIRM !== "1") {
 const BASE = process.env.QA_BASE_URL ?? "http://localhost:3000";
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 const EMAIL = "stripe-webhook-test@example.invalid";
-const PASSWORD = "QaTest12345";
+const PASSWORD = process.env.TEST_PASSWORD;
+
+if (!PASSWORD) {
+  throw new Error('TEST_PASSWORD is required');
+}
 
 if (!WEBHOOK_SECRET) {
   console.error("STRIPE_WEBHOOK_SECRET berilmagan.");
@@ -243,3 +247,4 @@ const passed = results.filter((r) => r.ok).length;
 console.log(`\n${passed}/${results.length} muvaffaqiyatli · test hisobi o'chirildi`);
 
 process.exit(failed || passed === results.length ? failed : 1);
+

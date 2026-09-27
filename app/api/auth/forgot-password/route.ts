@@ -7,7 +7,7 @@ import { isMailConfigured, passwordResetMail, sendMail } from "@/lib/mail";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  if (!rateLimit(`forgot:${clientIp(request)}`, 5, 15 * 60 * 1000).ok) {
+  if (!(await rateLimit(`forgot:${clientIp(request)}`, 5, 15 * 60 * 1000)).ok) {
     return NextResponse.json(
       { error: "Juda ko'p urinish. Birozdan so'ng qayta urinib ko'ring." },
       { status: 429 }

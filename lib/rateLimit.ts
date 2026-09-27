@@ -1,8 +1,10 @@
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
+
 type Bucket = { count: number; resetAt: number };
 
 const buckets = new Map<string, Bucket>();
 
-// Xotira cheksiz o'smasin: har tozalashda muddati o'tganlari olib tashlanadi
 function sweep(now: number) {
   if (buckets.size < 5000) return;
   for (const [key, bucket] of buckets) {
@@ -10,11 +12,41 @@ function sweep(now: number) {
   }
 }
 
-/**
- * Oddiy xotiradagi chegara. Serverless'da har instansiya alohida hisoblaydi,
- * shuning uchun bu mutlaq to'siq emas — qo'pol suiiste'molni to'xtatadi.
- */
-export function rateLimit(key: string, limit: number, windowMs: number) {
+const redis =
+  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+    ? Redis.fromEnv()
+    : null;
+
+const limiterCache = new Map<string, Ratelimit>();
+
+function getLimiter(limit: number, windowMs: number): Ratelimit {
+  const cacheKey = `${limit}:${windowMs}`;
+  let limiter = limiterCache.get(cacheKey);
+  if (!limiter && redis) {
+    limiter = new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(limit, `${windowMs} ms`),
+      analytics: true,
+    });
+    limiterCache.set(cacheKey, limiter);
+  }
+  return limiter!;
+}
+
+export async function rateLimit(
+  key: string,
+  limit: number,
+  windowMs: number
+): Promise<{ ok: boolean; retryAfter: number }> {
+  if (redis) {
+    const limiter = getLimiter(limit, windowMs);
+    const result = await limiter.limit(key);
+    return {
+      ok: result.success,
+      retryAfter: result.success ? 0 : Math.ceil((result.reset - Date.now()) / 1000),
+    };
+  }
+
   const now = Date.now();
   sweep(now);
 
@@ -40,11 +72,6 @@ export function clientIp(request: Request): string {
   return request.headers.get("x-real-ip") ?? "unknown";
 }
 
-/**
- * NextAuth'ning authorize(credentials, req) callback'iga keladigan `req.headers`
- * oddiy obyekt (Fetch API Headers emas), shuning uchun clientIp() ishlamaydi —
- * shu yerda xuddi shu mantiq oddiy obyekt uchun takrorlanadi.
- */
 export function clientIpFromHeaders(headers: Record<string, unknown> | undefined): string {
   if (!headers) return "unknown";
 

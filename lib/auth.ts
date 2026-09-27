@@ -63,8 +63,8 @@ export const authOptions: NextAuthOptions = {
         // aks holda bitta IP'dan ko'plab turli email bilan credential-stuffing
         // hech qanday chegarasiz qilinishi mumkin edi.
         if (
-          !rateLimit(`login:${email}`, 10, 15 * 60 * 1000).ok ||
-          !rateLimit(`login-ip:${ip}`, 30, 15 * 60 * 1000).ok
+          !(await rateLimit(`login:${email}`, 10, 15 * 60 * 1000)).ok ||
+          !(await rateLimit(`login-ip:${ip}`, 30, 15 * 60 * 1000)).ok
         ) {
           return null;
         }
