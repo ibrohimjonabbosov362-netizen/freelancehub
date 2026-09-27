@@ -77,7 +77,7 @@ export async function PATCH(request: Request) {
     }
 
     // Sessiya o'g'irlangan bo'lsa ham joriy parolni cheksiz sinab bo'lmasin
-    if (!rateLimit(`change-password:${userId}`, 5, 15 * 60 * 1000).ok) {
+    if (!(await rateLimit(`change-password:${userId}`, 5, 15 * 60 * 1000)).ok) {
       return NextResponse.json(
         { error: "Juda ko'p urinish. Birozdan so'ng qayta urinib ko'ring." },
         { status: 429 }
