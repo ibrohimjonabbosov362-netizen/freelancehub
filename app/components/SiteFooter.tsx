@@ -3,8 +3,7 @@
 import Link from "next/link";
 import LocaleSwitcher from "../LocaleSwitcher";
 import { useI18n } from "@/lib/i18n/client";
-
-const CONTACT_EMAIL = "ibrohimjonabbosov362@gmail.com";
+import { SUPPORT_EMAIL } from "@/lib/site";
 
 /**
  * Ijtimoiy tarmoqlar manzili muhit o'zgaruvchisidan olinadi. Berilmagan
@@ -55,7 +54,9 @@ export default function SiteFooter() {
       title: t.footer.company,
       links: [
         { href: "/about", label: t.footer.about },
-        { href: `mailto:${CONTACT_EMAIL}`, label: t.footer.contact },
+        ...(SUPPORT_EMAIL
+          ? [{ href: `mailto:${SUPPORT_EMAIL}`, label: t.footer.contact }]
+          : []),
       ],
     },
     {
@@ -138,9 +139,11 @@ export default function SiteFooter() {
           style={{ color: "var(--faint)" }}
         >
           <span>© 2026 FreelanceHub. {t.footer.rights}</span>
-          <a href={`mailto:${CONTACT_EMAIL}`} className="link-muted">
-            {t.footer.contact}
-          </a>
+          {SUPPORT_EMAIL && (
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="link-muted">
+              {t.footer.contact}
+            </a>
+          )}
         </div>
       </div>
     </footer>

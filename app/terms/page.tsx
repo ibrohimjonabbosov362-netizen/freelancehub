@@ -1,5 +1,6 @@
 import LegalLayout from "../LegalLayout";
 import { pageMetadata } from "@/lib/seo";
+import { SUPPORT_EMAIL } from "@/lib/site";
 
 export const metadata = pageMetadata(
   "/terms",
@@ -97,7 +98,12 @@ export default function TermsPage() {
 
       <h2>11. Aloqa</h2>
       <p>
-        Savollar: <a href="mailto:ibrohimjonabbosov362@gmail.com">ibrohimjonabbosov362@gmail.com</a>
+        Savollar:{" "}
+        {SUPPORT_EMAIL ? (
+          <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+        ) : (
+          "ilova orqali qo'llab-quvvatlash xizmatiga murojaat qiling."
+        )}
       </p>
     </LegalLayout>
   );

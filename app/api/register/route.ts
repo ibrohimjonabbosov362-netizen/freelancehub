@@ -32,6 +32,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Email manzili noto'g'ri" }, { status: 400 });
     }
 
+    // Bitta email uchun soatiga 3 ta urinish — aks holda skript bilan
+    // "bu email bandmi?" degan savolni cheksiz tekshirib, mavjud hisoblar
+    // ro'yxatini tuzib chiqish mumkin edi.
+    if (!(await rateLimit(`register-email:${normalizedEmail}`, 3, 60 * 60 * 1000)).ok) {
+      return NextResponse.json(
+        { error: "Juda ko'p urinish. Birozdan so'ng qayta urinib ko'ring." },
+        { status: 429 }
+      );
+    }
+
     const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
     if (existingUser) {
@@ -60,7 +70,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Bu email bilan foydalanuvchi allaqachon mavjud" }, { status: 409 });
     }
 
-    console.error("Register error:", error);
+    console.error(
+      "Register error:",
+      error instanceof Error ? error.message : error
+    );
     return NextResponse.json({ error: "Server xatosi, keyinroq urinib ko'ring" }, { status: 500 });
   }
 }

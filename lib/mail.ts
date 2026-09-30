@@ -55,7 +55,9 @@ ${action ? `<tr><td style="padding-top:24px"><a href="${action.url}" style="disp
 }
 
 export function passwordResetMail(to: string, token: string): Mail {
-  const url = `${getAppUrl()}/reset-password?token=${token}`;
+  // Token manzilning `#` qismida ketadi (query parametrida emas): u server
+  // loglariga, Referer sarlavhasiga va analitika yozuvlariga tushmaydi.
+  const url = `${getAppUrl()}/reset-password#token=${token}`;
 
   return {
     to,

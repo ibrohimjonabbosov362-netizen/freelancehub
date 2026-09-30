@@ -45,7 +45,9 @@ export async function PATCH(request: Request) {
   const { name, currentPassword, newPassword } = await request.json();
 
   if (name !== undefined) {
-    const trimmed = String(name).trim();
+    // Ism butun interfeys bo'ylab (yon panel, shartnoma, PDF) ko'rinadi —
+    // shuning uchun uzunlikni ham shu yerda cheklaymiz.
+    const trimmed = String(name).trim().slice(0, 120);
 
     if (!trimmed) {
       return NextResponse.json({ error: "Ism bo'sh bo'lishi mumkin emas" }, { status: 400 });

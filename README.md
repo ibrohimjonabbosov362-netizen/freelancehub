@@ -46,6 +46,7 @@ Ilova: http://localhost:3000
 | `NEXT_PUBLIC_CURRENCY` | yo'q | `UZS` (standart), `USD` yoki `EUR` — butun ilova shu valyutada |
 | `NEXT_PUBLIC_PRICE_MONTHLY` / `_YEARLY` | yo'q | Tariflar sahifasidagi narx (Stripe'dagi bilan bir xil bo'lsin) |
 | `NEXT_PUBLIC_SOCIAL_*` | yo'q | `INSTAGRAM`, `LINKEDIN`, `X` — berilmagani footer'da ko'rinmaydi |
+| `NEXT_PUBLIC_SUPPORT_EMAIL` | yo'q | Footer, `/help` va huquqiy sahifalardagi aloqa manzili; berilmasa havola ko'rinmaydi |
 
 > ⚠️ `.env` da bir o'zgaruvchini ikki marta yozmang — **oxirgisi kuchga kiradi** va yuqoridagisini jimgina bekor qiladi.
 
@@ -182,6 +183,7 @@ Framework avtomatik "Next.js" deb aniqlanadi, sozlamalarni o'zgartirish shart em
 | `NEXTAUTH_URL` | **`https://sizning-loyiha.vercel.app`** — lokal manzil emas! |
 | `NEXT_PUBLIC_APP_URL` | yuqoridagi bilan bir xil |
 | `STRIPE_*` | Premium kerak bo'lsa (bo'sh qoldirsa ham ilova ishlaydi) |
+| `NEXT_PUBLIC_SUPPORT_EMAIL` | Footer va huquqiy sahifalardagi aloqa manzili (ixtiyoriy) |
 
 > `NEXTAUTH_URL` ni almashtirishni unutmang — aks holda kirish (login)
 > `localhost` ga yo'naltirib, ishlamay qoladi.

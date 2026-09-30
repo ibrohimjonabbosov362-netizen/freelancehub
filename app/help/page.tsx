@@ -2,6 +2,7 @@ import Link from "next/link";
 import ContentLayout from "../components/ContentLayout";
 import { getDictionary, getLocale } from "@/lib/i18n/server";
 import { pageMetadata } from "@/lib/seo";
+import { SUPPORT_EMAIL } from "@/lib/site";
 
 export async function generateMetadata() {
   const locale = await getLocale();
@@ -96,11 +97,15 @@ export default async function HelpPage() {
       </p>
 
       <h2>{en ? "Still stuck?" : "Muammo hal bo'lmadimi?"}</h2>
-      <p>
-        {en ? "Write to " : "Bizga yozing: "}
-        <a href="mailto:ibrohimjonabbosov362@gmail.com">ibrohimjonabbosov362@gmail.com</a>
-        {en ? " and describe what you were doing when it went wrong." : " — nima qilayotganingizni va nima bo'lganini yozing."}
-      </p>
+      {SUPPORT_EMAIL && (
+        <p>
+          {en ? "Write to " : "Bizga yozing: "}
+          <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+          {en
+            ? " and describe what you were doing when it went wrong."
+            : " — nima qilayotganingizni va nima bo'lganini yozing."}
+        </p>
+      )}
       <p>
         <Link href="/#faq">{t.landing.faqTitle} →</Link>
       </p>

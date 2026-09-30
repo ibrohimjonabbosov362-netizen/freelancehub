@@ -35,7 +35,16 @@ export async function POST(request: Request) {
     const token = randomBytes(32).toString("hex");
     const tokenHash = createHash("sha256").update(token).digest("hex");
 
-    await prisma.passwordResetToken.deleteMany({ where: { userId: user.id, usedAt: null } });
+    // Faqat eskirgan yoki ishlatilgan yozuvlarni tozalaymiz. Amaldagi
+    // havolalarni o'chirib tashlasak, kimdir qurbonning emailiga qayta-qayta
+    // so'rov yuborib, uning qo'lidagi havolani kuchdan chiqarib qo'yardi.
+    await prisma.passwordResetToken.deleteMany({
+      where: {
+        userId: user.id,
+        OR: [{ expiresAt: { lt: new Date() } }, { usedAt: { not: null } }],
+      },
+    });
+
     await prisma.passwordResetToken.create({
       data: {
         userId: user.id,

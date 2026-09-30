@@ -59,8 +59,11 @@ export async function POST(request: Request) {
   try {
     const proposal = await prisma.proposal.create({
       data: {
-        title: String(title).trim(),
-        description: description ? String(description).trim() : null,
+        // Proposals ro'yxati va kartochkalari shu matnlarni ko'rsatadi, shuning
+        // uchun chegara qo'yamiz — aks holda bitta so'rov bilan bazaga
+        // cheksiz katta satr yozib qo'yish mumkin edi.
+        title: String(title).trim().slice(0, 200),
+        description: description ? String(description).trim().slice(0, 5000) : null,
         amount: parsedAmount.toFixed(2),
         clientId,
         userId,
@@ -69,7 +72,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(proposal, { status: 201 });
   } catch (error) {
-    console.error("Proposal create error:", error);
+    console.error("Proposal create error:", error instanceof Error ? error.message : error);
     return NextResponse.json(
       { error: "Taklifni saqlab bo'lmadi" },
       { status: 500 }

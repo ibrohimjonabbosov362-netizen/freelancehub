@@ -2,12 +2,23 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import { createHash } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, clientIpFromHeaders } from "@/lib/rateLimit";
 
 export function isGoogleConfigured(): boolean {
   return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+}
+
+/**
+ * Token'ni parolga bog'laydigan belgi. Parol almashganda (yoki hisob o'chirilganda)
+ * belgi ham o'zgaradi, shuning uchun o'sha paytgacha berilgan tokenlar kuchini
+ * yo'qotadi — o'g'irlangan sessiya parol almashtirilgandan keyin ham 30 kun
+ * ishlab turavermasin. Token ichiga parolning o'zi tushmaydi.
+ */
+function passwordMarker(password: string | null): string {
+  return password ? createHash("sha256").update(password).digest("hex").slice(0, 16) : "none";
 }
 
 export const authOptions: NextAuthOptions = {
@@ -97,13 +108,47 @@ export const authOptions: NextAuthOptions = {
       }
 
       // Google orqali kirilganda id token'da bo'lmasligi mumkin
-      if (!token.id && token.email) {
+      if (!token.id && !token.revoked && token.email) {
         const existing = await prisma.user.findUnique({
           where: { email: token.email },
           select: { id: true },
         });
         if (existing) token.id = existing.id;
       }
+
+      const tokenUserId = typeof token.id === "string" ? token.id : null;
+
+      if (tokenUserId) {
+        try {
+          const current = await prisma.user.findUnique({
+            where: { id: tokenUserId },
+            select: { password: true },
+          });
+
+          if (!current) {
+            // Hisob o'chirilgan — token endi hech narsaga bog'lanmaydi
+            token.revoked = true;
+          } else {
+            const marker = passwordMarker(current.password);
+
+            if (token.pwdv === undefined) {
+              // Bu tekshiruv qo'shilishidan oldin berilgan tokenlar joriy
+              // holatga moslanadi — hamma bir yo'la tizimdan chiqib qolmasin.
+              token.pwdv = marker;
+            } else if (token.pwdv !== marker) {
+              token.revoked = true;
+            }
+          }
+        } catch (error) {
+          // Baza javob bermasa sessiyani o'chirmaymiz — aks holda kichik
+          // uzilish barcha foydalanuvchini tizimdan chiqarib yuborardi.
+          console.error("Sessiya tekshiruvi bajarilmadi:", error);
+        }
+      }
+
+      // Bekor qilingan tokenda id qolmaydi: getCurrentUserId() null qaytaradi,
+      // ya'ni bu sessiya hech qanday so'rovga ruxsat bermaydi.
+      if (token.revoked) delete token.id;
 
       return token;
     },

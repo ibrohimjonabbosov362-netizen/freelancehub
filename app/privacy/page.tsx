@@ -1,5 +1,6 @@
 import LegalLayout from "../LegalLayout";
 import { pageMetadata } from "@/lib/seo";
+import { SUPPORT_EMAIL } from "@/lib/site";
 
 export const metadata = pageMetadata(
   "/privacy",
@@ -81,8 +82,14 @@ export default function PrivacyPage() {
 
       <h2>8. O&apos;zgartirishlar va aloqa</h2>
       <p>
-        Siyosat o&apos;zgarganda ushbu sahifadagi sana yangilanadi. Savollar
-        bo&apos;yicha: <a href="mailto:ibrohimjonabbosov362@gmail.com">ibrohimjonabbosov362@gmail.com</a>.
+        Siyosat o&apos;zgarganda ushbu sahifadagi sana yangilanadi.
+        {SUPPORT_EMAIL && (
+          <>
+            {" "}
+            Savollar bo&apos;yicha:{" "}
+            <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
+          </>
+        )}
       </p>
     </LegalLayout>
   );

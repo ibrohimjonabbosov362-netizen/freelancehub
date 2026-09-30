@@ -12,7 +12,17 @@ function LoginForm() {
   const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  // Faqat ilova ichidagi manzillarga ruxsat beramiz: aks holda
+  // `/login?callbackUrl=https://begona-sayt` havolasi orqali odam muvaffaqiyatli
+  // kirgandan keyin fishing sahifasiga olib ketilardi. Brauzer `//` va `\` bilan
+  // boshlanadigan qiymatlarni ham tashqi manzil deb o'qiydi — ularni ham rad etamiz.
+  const requestedCallbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
+  const callbackUrl =
+    requestedCallbackUrl.startsWith("/") &&
+    !requestedCallbackUrl.startsWith("//") &&
+    !requestedCallbackUrl.includes("\\")
+      ? requestedCallbackUrl
+      : "/dashboard";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

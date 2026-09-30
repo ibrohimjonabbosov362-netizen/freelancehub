@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import AuthLayout from "../components/AuthLayout";
 import { useI18n } from "@/lib/i18n/client";
+import { SUPPORT_EMAIL } from "@/lib/site";
 
 export default function ForgotPasswordPage() {
   const { t } = useI18n();
@@ -78,13 +79,19 @@ export default function ForgotPasswordPage() {
         <>
           <div className="alert alert-danger">
             <strong>{t.auth.mailOff}</strong>
-            <p className="mt-1.5">{t.auth.mailOffText}</p>
-            <a
-              href="mailto:ibrohimjonabbosov362@gmail.com"
-              className="link mt-1.5 inline-block"
-            >
-              ibrohimjonabbosov362@gmail.com
-            </a>
+            {/* Manzil muhit o'zgaruvchisidan olinadi; berilmasa matn ham,
+                havola ham ko'rsatilmaydi — yarim qolgan jumla chiqmasin. */}
+            {SUPPORT_EMAIL && (
+              <>
+                <p className="mt-1.5">{t.auth.mailOffText}</p>
+                <a
+                  href={`mailto:${SUPPORT_EMAIL}`}
+                  className="link mt-1.5 inline-block"
+                >
+                  {SUPPORT_EMAIL}
+                </a>
+              </>
+            )}
           </div>
           <Link href="/login" className="btn btn-ghost mt-5 w-full">
             {t.auth.backToLogin}

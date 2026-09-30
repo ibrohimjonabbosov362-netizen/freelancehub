@@ -76,7 +76,7 @@ export async function PATCH(
     where: { id },
     data: {
       ...(status !== undefined ? { status: status as ProjectStatus } : {}),
-      ...(title !== undefined ? { title: String(title).trim() } : {}),
+      ...(title !== undefined ? { title: String(title).trim().slice(0, 200) } : {}),
     },
     include: { client: true },
   });

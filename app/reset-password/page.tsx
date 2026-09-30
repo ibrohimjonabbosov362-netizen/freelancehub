@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AuthLayout from "../components/AuthLayout";
 import { useI18n } from "@/lib/i18n/client";
@@ -9,13 +9,20 @@ import { useI18n } from "@/lib/i18n/client";
 function ResetForm() {
   const { t } = useI18n();
   const router = useRouter();
-  const token = useSearchParams().get("token") ?? "";
+  // Token manzilning `#` qismida keladi — brauzer uni serverga yubormaydi,
+  // shuning uchun faqat klient tomonda o'qiladi.
+  const [token, setToken] = useState<string | null>(null);
 
   const [password, setPassword] = useState("");
   const [repeat, setRepeat] = useState("");
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    setToken(hash.get("token") ?? "");
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -49,6 +56,11 @@ function ResetForm() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Token faqat brauzerda o'qiladi — birinchi render'da hali ma'lum emas
+  if (token === null) {
+    return <p className="hint">{t.common.loading}</p>;
   }
 
   if (!token) {

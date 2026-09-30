@@ -142,7 +142,15 @@ export async function POST(request: Request) {
       case "customer.subscription.created":
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
-        await syncSubscription(event.data.object);
+        // Hodisa tanasidagi holatga ishonmaymiz: Stripe hodisalarni tartib
+        // kafolatisiz yetkazadi, shuning uchun kechikkan "active" hodisasi
+        // bekor qilingandan KEYIN kelib, Premium'ni qayta ochib qo'yishi mumkin
+        // edi. Har doim obunaning HOZIRGI holatini Stripe'dan o'qib olamiz.
+        const subscription = await getStripe().subscriptions.retrieve(
+          event.data.object.id
+        );
+
+        await syncSubscription(subscription);
         break;
       }
 
@@ -152,7 +160,10 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     // 500 qaytarsak Stripe qayta yuboradi, shuning uchun xatoni yozib qo'yamiz.
-    console.error(`Webhook ishlov berishda xatolik (${event.type}):`, error);
+    console.error(
+      `Webhook ishlov berishda xatolik (${event.type}):`,
+      error instanceof Error ? error.message : error
+    );
     return NextResponse.json(
       { error: "Hodisani qayta ishlashda xatolik" },
       { status: 500 }
