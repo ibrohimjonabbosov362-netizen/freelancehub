@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Geist, Geist_Mono, Fraunces } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import Analytics from "./Analytics";
+import ServiceWorkerRegister from "./ServiceWorkerRegister";
 import { getLocale } from "@/lib/i18n/server";
 
 const geistSans = Geist({
@@ -35,6 +37,18 @@ export const metadata: Metadata = {
   },
   description: SEO_DESCRIPTION,
   applicationName: "FreelanceHub",
+  appleWebApp: {
+    capable: true,
+    title: "FreelanceHub",
+    statusBarStyle: "black",
+  },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icons/icon-192.png", type: "image/png", sizes: "192x192" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
+  },
   keywords: [
     "freelance",
     "freelancer",
@@ -70,7 +84,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  themeColor: "#0a0714",
+  themeColor: "#08090b",
   width: "device-width",
   initialScale: 1,
 };
@@ -81,6 +95,8 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const locale = await getLocale();
+  // proxy.ts har so'rovga yangi CSP nonce beradi
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
 
   return (
     <html lang={locale}>
@@ -93,7 +109,8 @@ export default async function RootLayout({
           <style>{`[data-reveal]{opacity:1!important;transform:none!important;box-shadow:none!important}`}</style>
         </noscript>
         <Providers locale={locale}>{children}</Providers>
-        <Analytics />
+        <Analytics nonce={nonce} />
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

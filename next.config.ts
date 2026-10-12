@@ -1,27 +1,7 @@
 import type { NextConfig } from "next";
 
-// Next.js ishlab chiqish rejimida HMR uchun eval kerak bo'ladi; production
-// build'da esa u hech qayerda ishlatilmaydi. `unsafe-eval` qolib ketsa, CSP
-// XSS'ga qarshi deyarli hech qanday to'siq qo'ymaydi.
-const isDev = process.env.NODE_ENV !== "production";
-
-const csp = [
-  "default-src 'self'",
-  // Next.js o'zining bootstrap skriptlarini inline joylashtiradi, shuning uchun
-  // 'unsafe-inline' kerak (nonce'ga o'tish alohida ish).
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://www.googletagmanager.com https://www.google-analytics.com`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https:",
-  "font-src 'self' data:",
-  "connect-src 'self' https://api.stripe.com https://www.google-analytics.com https://www.googletagmanager.com https://www.google.com",
-  "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
-  // Sahifani begona sayt ichida ramkaga solib bo'lmaydi (X-Frame-Options ham bor)
-  "frame-ancestors 'none'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-].join("; ");
-
+// Content-Security-Policy har bir so'rov uchun nonce bilan proxy.ts'da
+// qo'yiladi ('unsafe-inline' skriptlarsiz). Bu yerda faqat statik header'lar.
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
@@ -34,7 +14,6 @@ const securityHeaders = [
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",
   },
-  { key: "Content-Security-Policy", value: csp },
 ];
 
 const nextConfig: NextConfig = {
@@ -43,7 +22,26 @@ const nextConfig: NextConfig = {
     root: process.cwd(),
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      {
+        // Service worker har doim yangisi olinsin, aks holda eski versiya
+        // brauzerda qotib qoladi
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+    ];
+  },
+  async rewrites() {
+    return [
+      // RFC 9116: security.txt standart manzili
+      { source: "/.well-known/security.txt", destination: "/security.txt" },
+      // Play Market ilovasi (TWA) uchun domen tasdig'i
+      { source: "/.well-known/assetlinks.json", destination: "/assetlinks.json" },
+    ];
   },
 };
 
