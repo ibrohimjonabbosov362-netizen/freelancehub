@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import LocaleSwitcher from "../LocaleSwitcher";
 import CtaLink from "./motion/CtaLink";
+import InstallAppButton from "./InstallAppButton";
 import { useI18n } from "@/lib/i18n/client";
 
 export default function SiteHeader() {
@@ -53,6 +54,7 @@ export default function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-2.5">
+          <InstallAppButton />
           <div className="hidden sm:block">
             <LocaleSwitcher compact />
           </div>

@@ -56,6 +56,16 @@ const uz = {
     upgradeToPremium: "Premium'ga o'tish",
     later: "Keyinroq",
   },
+  install: {
+    button: "Ilovani o'rnatish",
+    iosTitle: "Ilovani iPhone'ga o'rnatish",
+    iosDescription: "Safari'da uch qadam — ilova bosh ekranda paydo bo'ladi.",
+    iosStep1: "Pastdagi \"Ulashish\" tugmasini bosing",
+    iosStep2: "\"Bosh ekranga qo'shish\" bandini tanlang",
+    iosStep3: "Yuqori o'ngdagi \"Qo'shish\" ni bosing",
+    iosNotSafari: "Bu faqat Safari brauzerida ishlaydi — havolani Safari'da oching.",
+    done: "Tushunarli",
+  },
   nav: {
     dashboard: "Boshqaruv paneli",
     clients: "Mijozlar",
@@ -516,6 +526,16 @@ const en: Dictionary = {
     loadFailed: "Could not load the data",
     upgradeToPremium: "Upgrade to Premium",
     later: "Later",
+  },
+  install: {
+    button: "Install app",
+    iosTitle: "Install the app on iPhone",
+    iosDescription: "Three steps in Safari — the app appears on your home screen.",
+    iosStep1: "Tap the \"Share\" button at the bottom",
+    iosStep2: "Choose \"Add to Home Screen\"",
+    iosStep3: "Tap \"Add\" in the top right",
+    iosNotSafari: "This only works in Safari — open the link in Safari.",
+    done: "Got it",
   },
   nav: {
     dashboard: "Dashboard",

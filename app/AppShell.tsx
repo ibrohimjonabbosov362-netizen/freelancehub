@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import LocaleSwitcher from "./LocaleSwitcher";
+import InstallAppButton from "./components/InstallAppButton";
 import { useI18n } from "@/lib/i18n/client";
 
 type NavLink = { href: string; key: keyof ReturnType<typeof useI18n>["t"]["nav"]; icon: React.ReactNode };
@@ -200,6 +201,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </p>
             </div>
           )}
+
+          <InstallAppButton variant="sidebar" />
 
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
